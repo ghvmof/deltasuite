@@ -172,6 +172,16 @@ class ResultDataset:
         """Release the underlying NetCDF handle."""
         self._ds.close()
 
+    @property
+    def raw(self) -> xr.Dataset:
+        """The underlying :class:`xarray.Dataset`.
+
+        Exposed so callers can run extra analyses (vector overlays,
+        cross-sections, custom aggregations) without re-opening the file.
+        Treat as read-only.
+        """
+        return self._ds
+
     def __enter__(self) -> ResultDataset:
         return self
 

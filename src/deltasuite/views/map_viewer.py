@@ -19,11 +19,13 @@ from matplotlib.backends.backend_qtagg import (  # type: ignore[attr-defined]
 from matplotlib.figure import Figure
 from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 
+from deltasuite.core.dfm_tools_adapter import UVField
 from deltasuite.core.results import Field2D, GridKind
 
 if TYPE_CHECKING:
     from matplotlib.collections import Collection
     from matplotlib.colorbar import Colorbar
+    from matplotlib.quiver import Quiver
 
 
 class MapViewerWidget(QWidget):
@@ -50,6 +52,11 @@ class MapViewerWidget(QWidget):
         self._cmap: str = "viridis"
         self._fixed_range: tuple[float, float] | None = None
         self._field: Field2D | None = None
+        self._uv: UVField | None = None
+        self._quiver: Quiver | None = None
+        self._uv_color: str = "white"
+        self._uv_scale: float | None = None
+        """``None`` -> let matplotlib autoscale."""
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -81,9 +88,32 @@ class MapViewerWidget(QWidget):
         if self._field is not None:
             self._render()
 
+    def set_vector_overlay(
+        self,
+        uv: UVField | None,
+        *,
+        color: str | None = None,
+        scale: float | None = None,
+    ) -> None:
+        """Overlay a velocity field as a ``quiver`` on top of the colourmap.
+
+        Pass ``uv=None`` to remove an existing overlay. ``scale`` follows
+        matplotlib semantics (smaller = bigger arrows); ``None`` lets
+        matplotlib autoscale.
+        """
+        self._uv = uv
+        if color is not None:
+            self._uv_color = color
+        if scale is not None:
+            self._uv_scale = scale
+        if self._field is not None:
+            self._render()
+
     def clear(self) -> None:
         """Remove the current plot and reset the canvas."""
         self._field = None
+        self._uv = None
+        self._quiver = None
         self._show_placeholder("No data loaded")
 
     def current_field(self) -> Field2D | None:
@@ -128,12 +158,43 @@ class MapViewerWidget(QWidget):
         units = f" [{field.units}]" if field.units else ""
         self._colorbar.set_label(f"{field.name}{units}")
 
+        # Optional vector overlay on top of the colour mesh.
+        self._quiver = None
+        if self._uv is not None:
+            self._quiver = self._draw_uv_overlay(self._uv)
+
         title_parts = [field.name]
         if field.time is not None:
             title_parts.append(field.time.strftime("%Y-%m-%d %H:%M:%S"))
         self._axes.set_title("  -  ".join(title_parts))
 
         self._canvas.draw_idle()  # type: ignore[no-untyped-call]
+
+    def _draw_uv_overlay(self, uv: UVField) -> Quiver | None:
+        """Add a ``quiver`` for ``uv`` and return the artist (or ``None``)."""
+        x = np.asarray(uv.x)
+        y = np.asarray(uv.y)
+        u = np.ma.masked_array(uv.u, uv.mask)
+        v = np.ma.masked_array(uv.v, uv.mask)
+        # Flatten 2D -> 1D for quiver (it accepts both, but 1D is universally
+        # safe across structured and unstructured fields).
+        if x.ndim == 2:
+            x = x.ravel()
+            y = y.ravel()
+            u = u.ravel()
+            v = v.ravel()
+        kwargs: dict[str, object] = {
+            "color": self._uv_color,
+            "alpha": 0.85,
+            "width": 0.0025,
+        }
+        if self._uv_scale is not None:
+            kwargs["scale"] = self._uv_scale
+        try:
+            return self._axes.quiver(x, y, u, v, **kwargs)
+        except (ValueError, RuntimeError) as exc:
+            logger.warning("Vector overlay failed: {}", exc)
+            return None
 
     def _draw_curvilinear(self, field: Field2D, vmin: float, vmax: float) -> Collection:
         x = field.grid.x

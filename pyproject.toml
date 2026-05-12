@@ -216,12 +216,26 @@ strict = true
 warn_unused_ignores = false
 warn_return_any = true
 ignore_missing_imports = true
+# Disable mypy from following imports into third-party packages that ship
+# Python 3.12+ syntax (``zarr``, ``dask``, etc.) - we already have
+# ``ignore_missing_imports = true`` for stub-less packages, but mypy will
+# try to actually parse them when they are available; ``follow_imports =
+# silent`` keeps mypy from descending into their source files.
+follow_imports = "silent"
 plugins = ["pydantic.mypy"]
 exclude = ["build", "dist", "docs/_build"]
 
 [[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_defs = false
+
+# Third-party packages whose source uses Python 3.12+ syntax (PEP 695 type
+# parameter lists, etc.) which our ``python_version = "3.11"`` mypy refuses
+# to parse. We do not call into these directly with explicit type
+# annotations, so silencing their analysis is harmless.
+[[tool.mypy.overrides]]
+module = ["zarr.*", "numcodecs.*", "donfig.*"]
+follow_imports = "skip"
 
 # ----------------------------------------------------------------------
 # Pytest
