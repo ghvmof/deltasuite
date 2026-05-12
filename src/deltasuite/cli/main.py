@@ -31,7 +31,7 @@ def _version_callback(value: bool) -> None:
         raise typer.Exit()
 
 
-@app.callback(invoke_without_command=True)
+@app.callback(invoke_without_command=True)  # type: ignore[misc]
 def root(
     ctx: typer.Context,
     version: Annotated[

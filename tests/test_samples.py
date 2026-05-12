@@ -14,7 +14,7 @@ def _patch_data_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     class _FakePaths:
         data_dir = tmp_path
 
-    monkeypatch.setattr(samples_mod, "get_app_paths", lambda: _FakePaths())  # noqa: PLW0108
+    monkeypatch.setattr(samples_mod, "get_app_paths", lambda: _FakePaths())
 
 
 def test_open_bundled_sample_writes_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

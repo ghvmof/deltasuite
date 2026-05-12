@@ -12,7 +12,7 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 
-@pytest.fixture
+@pytest.fixture()
 def tmp_project_root(tmp_path: Path) -> Iterator[Path]:
     """Provide a temporary, empty directory for project tests."""
     root = tmp_path / "my_project"
@@ -20,7 +20,7 @@ def tmp_project_root(tmp_path: Path) -> Iterator[Path]:
     return root
 
 
-@pytest.fixture
+@pytest.fixture()
 def fake_kernel_dir(tmp_path: Path) -> Path:
     """Create a directory pretending to host compiled Delft3D kernels.
 

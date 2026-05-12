@@ -12,9 +12,9 @@ pytest.importorskip("PySide6.QtWidgets")
 pytest.importorskip("matplotlib")
 pytest_qt = pytest.importorskip("pytestqt.qtbot")
 
-from deltasuite.core.results import ResultDataset, ResultFile  # noqa: E402
-from deltasuite.views.map_viewer import MapViewerWidget  # noqa: E402
-from deltasuite.views.result_panel import ResultPanel  # noqa: E402
+from deltasuite.core.results import ResultDataset, ResultFile
+from deltasuite.views.map_viewer import MapViewerWidget
+from deltasuite.views.result_panel import ResultPanel
 
 
 def _make_curvilinear(path: Path) -> None:

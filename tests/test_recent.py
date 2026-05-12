@@ -15,7 +15,7 @@ from deltasuite.core.recent import (
 )
 
 
-@pytest.fixture
+@pytest.fixture()
 def tmp_recent_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Redirect ``recent_projects.toml`` to a temporary location."""
     target = tmp_path / "recent_projects.toml"
@@ -25,7 +25,7 @@ def tmp_recent_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
         def __init__(self) -> None: ...
 
-    monkeypatch.setattr(recent_mod, "get_app_paths", lambda: _FakePaths())  # noqa: PLW0108
+    monkeypatch.setattr(recent_mod, "get_app_paths", lambda: _FakePaths())
     recent_mod.get_recent.cache_clear()
     return target
 

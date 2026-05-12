@@ -7,7 +7,7 @@ import pytest
 pytest.importorskip("PySide6.QtWidgets")
 pytest_qt = pytest.importorskip("pytestqt.qtbot")
 
-from deltasuite.widgets.result_controls import ResultControls  # noqa: E402
+from deltasuite.widgets.result_controls import ResultControls
 
 
 class _FakeDataset:

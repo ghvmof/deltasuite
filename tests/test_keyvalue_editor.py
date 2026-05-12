@@ -9,7 +9,7 @@ import pytest
 pytest.importorskip("PySide6.QtWidgets")
 pytest_qt = pytest.importorskip("pytestqt.qtbot")
 
-from deltasuite.editors.keyvalue_editor import KeyValueEditor  # noqa: E402
+from deltasuite.editors.keyvalue_editor import KeyValueEditor
 
 _MDU_SAMPLE = """\
 [General]

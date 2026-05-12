@@ -174,13 +174,19 @@ ignore = [
   "N803",    # argument name should be lowercase (Qt uses camelCase)
   "N806",    # variable in function should be lowercase (Qt uses camelCase)
   "PLC0415", # import-outside-top-level (we use lazy imports for Qt and to keep CLI snappy)
-  "TC001",   # typing-only-first-party-import (we like having imports near usage)
-  "TC003",   # typing-only-standard-library-import (extra noise for stdlib types)
+  "TCH001",  # typing-only-first-party-import (we like having imports near usage)
+  "TCH003",  # typing-only-standard-library-import (extra noise for stdlib types)
   "SIM112",  # uncapitalized environment variables (Windows uses 'ProgramFiles')
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["PLR2004", "S101", "TID252", "PLC0415"]
+"tests/**/*.py" = [
+  "PLR2004",
+  "S101",
+  "TID252",
+  "PLC0415",
+  "E402",  # imports after pytest.importorskip("PySide6") are intentional
+]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -193,7 +199,11 @@ docstring-code-format = true
 [tool.mypy]
 python_version = "3.11"
 strict = true
-warn_unused_ignores = true
+# Disabled because matplotlib's stub coverage varies across versions; the
+# ``# type: ignore`` comments we use are needed for some installed versions
+# of matplotlib but not others, and we don't want CI to break depending on
+# what's pinned. We still get coverage from the rest of strict mode.
+warn_unused_ignores = false
 warn_return_any = true
 ignore_missing_imports = true
 plugins = ["pydantic.mypy"]

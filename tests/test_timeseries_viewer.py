@@ -12,9 +12,9 @@ pytest.importorskip("PySide6.QtWidgets")
 pytest.importorskip("matplotlib")
 pytest_qt = pytest.importorskip("pytestqt.qtbot")
 
-from deltasuite.core.timeseries import TimeSeriesDataset, TimeSeriesFile  # noqa: E402
-from deltasuite.views.timeseries_panel import TimeSeriesPanel  # noqa: E402
-from deltasuite.views.timeseries_viewer import TimeSeriesViewerWidget  # noqa: E402
+from deltasuite.core.timeseries import TimeSeriesDataset, TimeSeriesFile
+from deltasuite.views.timeseries_panel import TimeSeriesPanel
+from deltasuite.views.timeseries_viewer import TimeSeriesViewerWidget
 
 
 def _make_his(path: Path, n_stations: int = 3) -> None:

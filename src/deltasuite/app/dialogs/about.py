@@ -34,7 +34,11 @@ class AboutDialog(QDialog):
         layout.addLayout(header)
 
         logo = QLabel()
-        logo.setPixmap(QPixmap(":/icons/logo.png").scaledToHeight(80, Qt.TransformationMode.SmoothTransformation))
+        logo.setPixmap(
+            QPixmap(":/icons/logo.png").scaledToHeight(
+                80, Qt.TransformationMode.SmoothTransformation
+            )
+        )
         logo.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         header.addWidget(logo, 0, Qt.AlignmentFlag.AlignTop)
 

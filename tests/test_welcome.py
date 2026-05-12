@@ -9,8 +9,8 @@ import pytest
 pytest.importorskip("PySide6.QtWidgets")
 pytest_qt = pytest.importorskip("pytestqt.qtbot")
 
-from deltasuite.app.welcome import WelcomeWidget  # noqa: E402
-from deltasuite.core.recent import RecentEntry, RecentProjects  # noqa: E402
+from deltasuite.app.welcome import WelcomeWidget
+from deltasuite.core.recent import RecentEntry, RecentProjects
 
 
 def test_welcome_renders_empty_recent(qtbot) -> None:  # type: ignore[no-untyped-def]
