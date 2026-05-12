@@ -276,7 +276,6 @@ def parse_mdf(text: str, *, path: Path | None = None) -> ConfigDocument:
             entry = ConfigEntry(key=key.strip(), value=value.strip(), comment="")
             section.entries.append(entry)
             last_entry = entry
-        # Continuation line for the previous multi-value entry.
         elif last_entry is not None:
             last_entry.value = (last_entry.value + "\n" + line.strip()).strip()
         else:
@@ -305,12 +304,58 @@ def serialize_mdf(doc: ConfigDocument) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
+# ---------------------------------------------------------------------------
+# Smart load helpers (optional ``hydrolib-core`` integration)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(slots=True)
+class SmartLoadResult:
+    """Combined result of a "best effort" .mdu / .mdf load.
+
+    ``document`` is always populated (we fall back to our lossless parser even
+    when hydrolib-core rejects the file). ``hydrolib_validated`` reflects
+    whether the file was *also* successfully validated against the official
+    Deltares schema; ``hydrolib_error`` carries the validation message
+    otherwise.
+    """
+
+    document: ConfigDocument
+    hydrolib_validated: bool = False
+    hydrolib_error: str | None = None
+
+
+def load_smart(path: Path) -> SmartLoadResult:
+    """Load a configuration file with extra validation when available.
+
+    For ``.mdu`` files this attempts a parallel parse with ``hydrolib-core``
+    (when installed) and surfaces any validation errors without losing the
+    primary, comment-preserving document. For ``.mdf`` files only our
+    parser runs (hydrolib-core does not handle Delft3D 4 ``.mdf``).
+    """
+    document = ConfigDocument.load(path)
+    if document.format is not ConfigFormat.MDU:
+        return SmartLoadResult(document=document)
+
+    # Lazy import: only touch hydrolib_adapter when actually needed.
+    from deltasuite.core.hydrolib_adapter import safe_load_fmmodel
+
+    result = safe_load_fmmodel(document.path)
+    return SmartLoadResult(
+        document=document,
+        hydrolib_validated=result.ok,
+        hydrolib_error=result.error,
+    )
+
+
 __all__ = (
     "ConfigDocument",
     "ConfigEntry",
     "ConfigFormat",
     "ConfigSection",
+    "SmartLoadResult",
     "detect_format",
+    "load_smart",
     "parse_mdf",
     "parse_mdu",
     "serialize_mdf",

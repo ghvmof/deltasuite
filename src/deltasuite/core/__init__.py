@@ -12,6 +12,16 @@ from deltasuite.core.config_files import (
     ConfigEntry,
     ConfigFormat,
     ConfigSection,
+    SmartLoadResult,
+    load_smart,
+)
+from deltasuite.core.hydrolib_adapter import (
+    HydrolibLoadResult,
+    fmmodel_section_summary,
+    fmmodel_set_values,
+    hydrolib_version,
+    is_hydrolib_available,
+    safe_load_fmmodel,
 )
 from deltasuite.core.kernels import KernelInfo, KernelKind, KernelSet, detect_kernels
 from deltasuite.core.logging_setup import configure_logging
@@ -59,6 +69,7 @@ __all__ = [
     "Field2D",
     "Grid2D",
     "GridKind",
+    "HydrolibLoadResult",
     "KernelInfo",
     "KernelKind",
     "KernelSet",
@@ -73,6 +84,7 @@ __all__ = [
     "RunConfig",
     "RunConfigError",
     "Settings",
+    "SmartLoadResult",
     "StationSeries",
     "TimeSeriesDataset",
     "TimeSeriesFile",
@@ -84,11 +96,17 @@ __all__ = [
     "discover_projects",
     "find_history_files",
     "find_result_files",
+    "fmmodel_section_summary",
+    "fmmodel_set_values",
     "get_app_paths",
     "get_recent",
     "get_settings",
+    "hydrolib_version",
+    "is_hydrolib_available",
+    "load_smart",
     "open_bundled_sample",
     "push_recent",
+    "safe_load_fmmodel",
     "save_recent",
     "save_settings",
 ]
