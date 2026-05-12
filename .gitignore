@@ -1,0 +1,113 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+.eggs/
+dist/
+build/
+wheels/
+*.whl
+.installed.cfg
+MANIFEST
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Testing ---
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+.hypothesis/
+.tox/
+.nox/
+
+# --- Type checking ---
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# --- Linting ---
+.ruff_cache/
+
+# --- Documentation ---
+docs/_build/
+docs/api/
+docs/_autosummary/
+
+# --- Distribution / Packaging ---
+# NOTE: installer/deltasuite.spec is a real file we DO commit; only ignore
+# generated PyInstaller .spec files at the repo root or other tracked dirs.
+/*.spec
+installer/build/
+installer/dist/
+installer/output/
+installer/branding/icon-*.png
+installer/branding/icon.ico
+
+# Build artifacts / generated icons (rebuilt by scripts/make_icons.py)
+*.pyz
+
+# --- Editors / IDEs ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.spyderproject
+.spyproject
+.ropeproject
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+*.lnk
+
+# --- DeltaSuite specific ---
+# User configuration and cache
+.deltasuite/
+*.deltasuite-cache
+*.deltasuite-log
+
+# Compiled translations
+*.qm
+
+# Local development overrides
+.env
+.env.local
+local_settings.toml
+
+# Sample model outputs
+*.trim
+*.trih
+*.dat
+*.def
+*_map.nc
+*_his.nc
+*_com.nc
+*_clm.nc
+DELWAQ.LOG
+TMP_*
+*.url
+RTC.DBG
+rtc.Log
+
+# Temporary files from external tools
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej

@@ -1,0 +1,91 @@
+name: Bug report
+description: Report a defect in DeltaSuite
+title: "[bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please fill in as much detail as you can —
+        the more we know, the faster we can fix it.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear and concise description of the bug.
+      placeholder: When I clicked X, the application Y instead of Z.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: |
+        Provide a minimal sequence of steps. If a project file is involved,
+        please attach (or provide a link to) a small `*.mdf` / `*.mdu` /
+        `deltasuite.toml` we can use to reproduce.
+      placeholder: |
+        1. Open DeltaSuite
+        2. File > Open project, select `tutorial/f34/f34.mdf`
+        3. Click "Run"
+        4. Observe the error in the log dock
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      placeholder: I expected the simulation to start and the log to stream output.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: DeltaSuite version
+      description: Output of `deltasuite --version` (or the value shown in Help → About).
+      placeholder: "0.1.0a1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows 11
+        - Windows 10
+        - Linux (please specify in extra info)
+        - macOS
+    validations:
+      required: true
+
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      description: Only required if you installed from PyPI; leave blank for the bundled installer.
+      placeholder: "3.13.0"
+
+  - type: textarea
+    id: kernel
+    attributes:
+      label: Delft3D kernels
+      description: Output of `deltasuite-detect` (or the relevant section from Help → Detect kernels).
+      render: text
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / traceback
+      description: Paste any relevant traceback or log lines.
+      render: text
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots, related issues, environment variables, etc.

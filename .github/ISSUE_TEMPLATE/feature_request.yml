@@ -1,0 +1,50 @@
+name: Feature request
+description: Suggest a new feature or improvement
+title: "[feat]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: A clear description of the use case. Avoid jumping to a solution.
+      placeholder: |
+        When I open a project that contains both a Delft3D 4 .mdf and a
+        D-Flow FM .mdu, DeltaSuite picks the wrong one and I have to ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How would you like DeltaSuite to behave? UI sketches welcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any workarounds or other tools that solve this?
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Which area does this affect?
+      multiple: true
+      options:
+        - Pre-processing (mesh / bathymetry / boundary conditions)
+        - Run management (kernel selection, MPI, monitoring)
+        - Post-processing (map viewer, time series, animations)
+        - Integration with official Deltares stack (hydrolib-core, dfm-tools)
+        - GUI / UX
+        - CLI
+        - Documentation
+        - Packaging / installer
+        - Other
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context

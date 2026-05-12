@@ -1,0 +1,109 @@
+# ---------------------------------------------------------------------------
+# Auto-detect text files and force LF for cross-platform consistency
+# ---------------------------------------------------------------------------
+* text=auto eol=lf
+
+# ---------------------------------------------------------------------------
+# Source files - always LF
+# ---------------------------------------------------------------------------
+*.py        text eol=lf diff=python
+*.pyi       text eol=lf diff=python
+*.toml      text eol=lf
+*.yaml      text eol=lf
+*.yml       text eol=lf
+*.json      text eol=lf
+*.md        text eol=lf
+*.rst       text eol=lf
+*.txt       text eol=lf
+*.cfg       text eol=lf
+*.ini       text eol=lf
+
+# ---------------------------------------------------------------------------
+# Web assets / docs
+# ---------------------------------------------------------------------------
+*.html      text eol=lf diff=html
+*.css       text eol=lf diff=css
+*.js        text eol=lf
+*.svg       text eol=lf
+
+# ---------------------------------------------------------------------------
+# Windows-specific files - keep CRLF
+# ---------------------------------------------------------------------------
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.ps1       text eol=crlf
+*.iss       text eol=crlf
+
+# Inno Setup ANSI templates
+installer/*.iss text eol=crlf
+
+# ---------------------------------------------------------------------------
+# Shell scripts - LF (will not run if CRLF)
+# ---------------------------------------------------------------------------
+*.sh        text eol=lf
+
+# ---------------------------------------------------------------------------
+# Binary files - never normalize, never diff as text
+# ---------------------------------------------------------------------------
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.icns      binary
+*.webp      binary
+*.bmp       binary
+*.tif       binary
+*.tiff      binary
+
+*.pdf       binary
+*.zip       binary
+*.tar       binary
+*.gz        binary
+*.7z        binary
+*.exe       binary
+*.dll       binary
+*.so        binary
+*.dylib     binary
+*.qm        binary
+*.whl       binary
+
+# Delft3D model binary outputs - never diff as text
+*.nc        binary
+*.nc4       binary
+*.h5        binary
+*.hdf5      binary
+*.dat       binary
+*.def       binary
+*.trim*     binary
+*.trih*     binary
+
+# Fonts
+*.ttf       binary
+*.otf       binary
+*.woff      binary
+*.woff2     binary
+
+# ---------------------------------------------------------------------------
+# Linguist overrides - tell GitHub the right primary language stats
+# ---------------------------------------------------------------------------
+docs/**            linguist-documentation
+tests/**           linguist-detectable=true
+installer/**       linguist-vendored=false
+scripts/**         linguist-detectable=true
+*.spec             linguist-language=Python
+
+# Generated / vendored
+docs/_build/**     linguist-generated=true
+docs/api/**        linguist-generated=true
+
+# ---------------------------------------------------------------------------
+# Export-ignore - keep these out of `git archive` (sdist tarballs from Hatch
+# already exclude them, this is for any manual `git archive`).
+# ---------------------------------------------------------------------------
+.github/        export-ignore
+.gitignore      export-ignore
+.gitattributes  export-ignore
+.editorconfig   export-ignore
+.pre-commit-config.yaml export-ignore
+tests/          export-ignore

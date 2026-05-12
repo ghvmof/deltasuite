@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or discussion
+    url: https://github.com/ghvmof/deltasuite/discussions
+    about: Ask a question, share a workflow, or discuss design ideas.
+  - name: Delft3D modelling questions
+    url: https://oss.deltares.nl/web/delft3d/forum
+    about: |
+      Questions about how to model a specific physical problem with Delft3D
+      itself (boundary conditions, choice of kernel, calibration, etc.) are
+      better answered on the official Deltares forum.

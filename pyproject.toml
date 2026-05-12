@@ -1,0 +1,242 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "deltasuite"
+version = "0.1.0a1"
+description = "Open source desktop suite for pre-processing, running and post-processing Delft3D models"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "GPL-3.0-or-later" }
+authors = [
+  { name = "DeltaSuite contributors" },
+]
+keywords = [
+  "delft3d",
+  "hydrodynamics",
+  "modeling",
+  "coastal",
+  "estuarine",
+  "rivers",
+  "morphology",
+  "water-quality",
+  "swan",
+  "dflowfm",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: X11 Applications :: Qt",
+  "Environment :: Win32 (MS Windows)",
+  "Environment :: MacOS X",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Education",
+  "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: MacOS",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Hydrology",
+  "Topic :: Scientific/Engineering :: Visualization",
+]
+
+dependencies = [
+  "PySide6>=6.7,<7",
+  "numpy>=1.26",
+  "platformdirs>=4.0",
+  "tomli>=2.0; python_version < '3.11'",
+  "tomli-w>=1.0",
+  "pydantic>=2.6",
+  "loguru>=0.7",
+  "rich>=13.7",
+  "typer>=0.12",
+  "matplotlib>=3.8",
+  "xarray>=2024.1",
+  "netcdf4>=1.6",
+  "scipy>=1.12",
+]
+
+[project.optional-dependencies]
+viz3d = [
+  "pyqtgraph>=0.13",
+  "pyvista>=0.43",
+  "pyvistaqt>=0.11",
+  "vtk>=9.3",
+]
+unstructured = [
+  "xugrid>=0.10",
+]
+gis = [
+  "shapely>=2.0",
+  "geopandas>=0.14",
+  "pyproj>=3.6",
+  "fiona>=1.9",
+  "contextily>=1.5",
+]
+science = [
+  "pandas>=2.1",
+]
+delft3d = [
+  "hydrolib-core>=0.7",
+  "dfm-tools>=0.27",
+  "meshkernel>=4.0",
+  "xugrid>=0.10",
+]
+dev = [
+  "pytest>=8.0",
+  "pytest-qt>=4.4",
+  "pytest-cov>=4.1",
+  "pytest-mock>=3.12",
+  "ruff>=0.5",
+  "mypy>=1.10",
+  "types-toml",
+  "pre-commit>=3.6",
+]
+docs = [
+  "sphinx>=7.2",
+  "sphinx-rtd-theme>=2.0",
+  "myst-parser>=2.0",
+  "sphinx-autoapi>=3.0",
+  "sphinx-copybutton>=0.5",
+]
+build = [
+  "pyinstaller>=6.5",
+  "hatchling>=1.21",
+]
+all = [
+  "deltasuite[viz3d,unstructured,gis,science,delft3d]",
+]
+
+[project.urls]
+Homepage = "https://github.com/ghvmof/deltasuite"
+Documentation = "https://deltasuite.readthedocs.io"
+Repository = "https://github.com/ghvmof/deltasuite"
+Issues = "https://github.com/ghvmof/deltasuite/issues"
+Changelog = "https://github.com/ghvmof/deltasuite/blob/main/CHANGELOG.md"
+
+[project.scripts]
+deltasuite = "deltasuite.__main__:main"
+deltasuite-detect = "deltasuite.cli.detect:main"
+
+[project.gui-scripts]
+deltasuite-gui = "deltasuite.app.entrypoint:run"
+
+# ----------------------------------------------------------------------
+# Hatch build configuration
+# ----------------------------------------------------------------------
+[tool.hatch.build.targets.wheel]
+packages = ["src/deltasuite"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/deltasuite",
+  "tests",
+  "docs",
+  "README.md",
+  "LICENSE",
+  "CHANGELOG.md",
+  "pyproject.toml",
+]
+
+# ----------------------------------------------------------------------
+# Ruff (linter + formatter)
+# ----------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "E",    # pycodestyle errors
+  "W",    # pycodestyle warnings
+  "F",    # pyflakes
+  "I",    # isort
+  "B",    # flake8-bugbear
+  "C4",   # flake8-comprehensions
+  "UP",   # pyupgrade
+  "N",    # pep8-naming
+  "SIM",  # flake8-simplify
+  "RUF",  # ruff-specific rules
+  "PT",   # flake8-pytest-style
+  "TCH",  # flake8-type-checking
+  "PL",   # pylint
+]
+ignore = [
+  "E501",    # line too long (handled by formatter)
+  "PLR0913", # too many arguments
+  "PLR2004", # magic value comparison
+  "N802",    # function name should be lowercase (Qt uses camelCase)
+  "N803",    # argument name should be lowercase (Qt uses camelCase)
+  "N806",    # variable in function should be lowercase (Qt uses camelCase)
+  "PLC0415", # import-outside-top-level (we use lazy imports for Qt and to keep CLI snappy)
+  "TC001",   # typing-only-first-party-import (we like having imports near usage)
+  "TC003",   # typing-only-standard-library-import (extra noise for stdlib types)
+  "SIM112",  # uncapitalized environment variables (Windows uses 'ProgramFiles')
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["PLR2004", "S101", "TID252", "PLC0415"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+# ----------------------------------------------------------------------
+# Mypy (static type checking)
+# ----------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_ignores = true
+warn_return_any = true
+ignore_missing_imports = true
+plugins = ["pydantic.mypy"]
+exclude = ["build", "dist", "docs/_build"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+# ----------------------------------------------------------------------
+# Pytest
+# ----------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = [
+  "-ra",
+  "--strict-markers",
+  "--strict-config",
+  "--cov=deltasuite",
+  "--cov-report=term-missing",
+  "--cov-report=xml",
+]
+markers = [
+  "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+  "integration: marks tests as integration tests",
+  "gui: marks tests requiring a Qt event loop",
+]
+filterwarnings = [
+  "error",
+  "ignore::DeprecationWarning:.*",
+  "ignore::PendingDeprecationWarning",
+  "ignore:numpy.ndarray size changed:RuntimeWarning",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["src/deltasuite"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "raise NotImplementedError",
+  "if TYPE_CHECKING:",
+  "if __name__ == .__main__.:",
+]
