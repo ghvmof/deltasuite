@@ -46,6 +46,12 @@ class MeshControls(QWidget):
     """User clicked *Open depth (.dep)…*."""
     clear_depth_requested = Signal()
     """User clicked *Clear depth*."""
+    triangulate_from_file_requested = Signal()
+    """User clicked *Triangulate from file (.pol/.ldb/.xy)…*."""
+    triangulate_from_bbox_requested = Signal()
+    """User clicked *Triangulate from current mesh bbox*."""
+    refine_by_depth_requested = Signal(float, int)
+    """Args: ``min_edge_size``, ``max_iterations``."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -61,7 +67,9 @@ class MeshControls(QWidget):
         outer.addWidget(self._build_io_box())
         outer.addWidget(self._build_depth_box())
         outer.addWidget(self._build_generate_box())
+        outer.addWidget(self._build_triangulate_box())
         outer.addWidget(self._build_refine_box())
+        outer.addWidget(self._build_refine_samples_box())
         outer.addWidget(self._build_ortho_box())
         outer.addStretch(1)
 
@@ -145,6 +153,18 @@ class MeshControls(QWidget):
         )
         return box
 
+    def _build_triangulate_box(self) -> QFrame:
+        box, layout = self._box("Triangulate (Delaunay)")
+        self._triangulate_file_btn = QPushButton("From file (.pol / .ldb / .xy)…")
+        self._triangulate_bbox_btn = QPushButton("From current mesh bbox")
+        self._triangulate_bbox_btn.setEnabled(False)
+        layout.addRow(self._triangulate_file_btn)
+        layout.addRow(self._triangulate_bbox_btn)
+
+        self._triangulate_file_btn.clicked.connect(self.triangulate_from_file_requested)
+        self._triangulate_bbox_btn.clicked.connect(self.triangulate_from_bbox_requested)
+        return box
+
     def _build_refine_box(self) -> QFrame:
         box, layout = self._box("Refine (full extent)")
         self._refine_iter_spin = QSpinBox()
@@ -157,6 +177,35 @@ class MeshControls(QWidget):
 
         self._refine_btn.clicked.connect(
             lambda: self.refine_requested.emit(int(self._refine_iter_spin.value()))
+        )
+        return box
+
+    def _build_refine_samples_box(self) -> QFrame:
+        box, layout = self._box("Refine by samples (uses depth)")
+        # min_edge_size = 0 with node-aligned samples can drive
+        # meshkernel into a runaway refinement loop. Force a tiny but
+        # non-zero floor so the user has to deliberately set it lower
+        # if they really want to.
+        self._refine_min_edge_spin = QDoubleSpinBox()
+        self._refine_min_edge_spin.setRange(0.001, 1_000_000.0)
+        self._refine_min_edge_spin.setDecimals(3)
+        self._refine_min_edge_spin.setValue(1.0)
+
+        self._refine_max_iter_spin = QSpinBox()
+        self._refine_max_iter_spin.setRange(1, 12)
+        self._refine_max_iter_spin.setValue(3)
+
+        self._refine_by_depth_btn = QPushButton("Refine using current depth")
+        self._refine_by_depth_btn.setEnabled(False)
+        layout.addRow("Min edge size", self._refine_min_edge_spin)
+        layout.addRow("Max iterations", self._refine_max_iter_spin)
+        layout.addRow(self._refine_by_depth_btn)
+
+        self._refine_by_depth_btn.clicked.connect(
+            lambda: self.refine_by_depth_requested.emit(
+                float(self._refine_min_edge_spin.value()),
+                int(self._refine_max_iter_spin.value()),
+            )
         )
         return box
 
@@ -186,6 +235,7 @@ class MeshControls(QWidget):
             self._refine_btn,
             self._ortho_btn,
             self._open_depth_btn,
+            self._triangulate_bbox_btn,
         ):
             btn.setEnabled(loaded)
         if not loaded:
@@ -194,6 +244,8 @@ class MeshControls(QWidget):
     def set_depth_loaded(self, loaded: bool, summary: str | None = None) -> None:
         """Toggle the depth-related buttons and update the status label."""
         self._clear_depth_btn.setEnabled(loaded)
+        # Refine by samples needs *both* a mesh and a depth to make sense.
+        self._refine_by_depth_btn.setEnabled(loaded)
         if loaded and summary:
             self._depth_label.setText(summary)
             self._depth_label.setStyleSheet("color: #f1f5f9;")
