@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Mesh editing back end (`deltasuite.mesh`)**
+  - `mesh/generate.py`: `make_rectangular_mesh()` (uniform M×N grid
+    with optional rotation) and `make_triangular_mesh_from_polygon()`
+    (Delaunay) wrapping `meshkernel`; both return a structured
+    `MeshOpResult` so failures (including missing `meshkernel`) flow
+    as data, not exceptions.
+  - `mesh/refine.py`: `refine_mesh_inside_polygon()` (Casulli) and
+    `refine_mesh_based_on_samples()` (adaptive, sample-driven).
+  - `mesh/edit.py`: `orthogonalize_mesh()`, `move_node()`,
+    `delete_node()`, `merge_nearby_nodes()` and a pure-Python
+    `hanging_edges()` linter.
+  - `mesh/io.py`: `save_mesh_to_ugrid_netcdf()` and `round_trip_mesh()`
+    -- writes CF-1.8 / UGRID-1.0 NetCDF using D-Flow FM's canonical
+    variable names (`mesh2d`, `mesh2d_node_x/y`, `mesh2d_edge_nodes`,
+    `mesh2d_face_nodes`) without depending on `meshkernel`.
+- **New *Mesh* tab in the main window**
+  - `views/mesh_viewer.py`: standalone matplotlib canvas
+    (`MeshViewerWidget`) that renders any `MeshGeometry` as a
+    `LineCollection` with the navigation toolbar, an aspect-correct
+    axis and a one-line summary (`N nodes / N edges / N faces`).
+  - `widgets/mesh_controls.py`: side panel with one button per
+    high-level operation (Open, Save, Generate rectangular, Refine,
+    Orthogonalise, Clear) and the relevant spin boxes; emits one
+    typed Qt signal per action so the surrounding panel sequences
+    the work.
+  - `views/mesh_panel.py`: `MeshPanel` glue widget that owns the
+    current `MeshGeometry`, dispatches every `MeshControls` signal to
+    the matching `deltasuite.mesh` operation and surfaces errors via
+    `QMessageBox` + a status line.
+  - Integrated as the fifth workspace tab (after *Series*) in
+    `MainWindow`, with a graceful `shutdown()` hook.
+- **30 new tests** covering the four back-end modules, the viewer,
+  the controls and the panel (signals, button enabling, generate /
+  save / open round-trip). Total: **159 tests** passing.
+
 ## [0.1.0a2] - 2026-05-13
 
 Second alpha. Adds the official **Deltares Python stack** integration

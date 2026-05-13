@@ -58,7 +58,7 @@ from deltasuite.core.samples import open_bundled_sample
 from deltasuite.core.settings import Settings
 from deltasuite.core.timeseries import find_history_files
 from deltasuite.editors import KeyValueEditor
-from deltasuite.views import ResultPanel, TimeSeriesPanel
+from deltasuite.views import MeshPanel, ResultPanel, TimeSeriesPanel
 
 
 class MainWindow(QMainWindow):
@@ -117,6 +117,9 @@ class MainWindow(QMainWindow):
 
         self._series_panel = TimeSeriesPanel()
         self._workspace_tabs.addTab(self._series_panel, "Series")
+
+        self._mesh_panel = MeshPanel()
+        self._workspace_tabs.addTab(self._mesh_panel, "Mesh")
 
         self._central_stack.addWidget(self._workspace_tabs)
         self._central_stack.setCurrentIndex(0)
@@ -924,6 +927,7 @@ class MainWindow(QMainWindow):
             self._run_controller.stop(force=True)
         self._result_panel.shutdown()
         self._series_panel.shutdown()
+        self._mesh_panel.shutdown()
         logger.info("Closing {}", APP_NAME)
         super().closeEvent(event)
 
