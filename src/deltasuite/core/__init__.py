@@ -35,6 +35,16 @@ from deltasuite.core.hydrolib_adapter import (
 )
 from deltasuite.core.kernels import KernelInfo, KernelKind, KernelSet, detect_kernels
 from deltasuite.core.logging_setup import configure_logging
+from deltasuite.core.mesh_adapter import (
+    MeshGeometry,
+    MeshLoadResult,
+    is_meshkernel_available,
+    is_xugrid_available,
+    load_mesh_from_dataset,
+    load_mesh_from_path,
+    meshkernel_version,
+    xugrid_version,
+)
 from deltasuite.core.paths import AppPaths, get_app_paths
 from deltasuite.core.project import Project, ProjectMeta, ProjectType
 from deltasuite.core.project_detector import (
@@ -84,6 +94,8 @@ __all__ = [
     "KernelInfo",
     "KernelKind",
     "KernelSet",
+    "MeshGeometry",
+    "MeshLoadResult",
     "Project",
     "ProjectMeta",
     "ProjectType",
@@ -119,7 +131,12 @@ __all__ = [
     "hydrolib_version",
     "is_dfm_tools_available",
     "is_hydrolib_available",
+    "is_meshkernel_available",
+    "is_xugrid_available",
+    "load_mesh_from_dataset",
+    "load_mesh_from_path",
     "load_smart",
+    "meshkernel_version",
     "open_bundled_sample",
     "open_curvilinear_smart",
     "open_partitioned_smart",
@@ -127,4 +144,5 @@ __all__ = [
     "safe_load_fmmodel",
     "save_recent",
     "save_settings",
+    "xugrid_version",
 ]

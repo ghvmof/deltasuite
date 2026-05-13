@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **MeshKernel / xugrid integration (`core/mesh_adapter.py`)**
+  - Library-agnostic `MeshGeometry` dataclass (nodes, edges, optional
+    face-node connectivity) and `MeshLoadResult` wrapper.
+  - `load_mesh_from_dataset()` and `load_mesh_from_path()` with two
+    backends: `xugrid` when installed (canonical UGRID parser), and a
+    pure-numpy heuristic fallback that recognises the standard
+    `mesh2d_*` variable names (with automatic 1-based → 0-based
+    normalisation for both edge and face connectivity, preserving the
+    `-1` sentinel for ragged faces).
+  - Cached availability and version probes
+    (`is_xugrid_available`, `xugrid_version`,
+    `is_meshkernel_available`, `meshkernel_version`) so the GUI can
+    enable / disable the wireframe row without paying the cost of
+    importing the C++ extension.
+  - All eight new symbols re-exported from `deltasuite.core`.
+- **Mesh wireframe overlay in the Map tab**
+  - `MapViewerWidget.set_mesh_overlay()` adds a thin grey
+    `LineCollection` of mesh edges below the U/V quiver (so arrows
+    stay readable). Sentinel-padded edges (`-1` UGRID convention) are
+    filtered out.
+  - `ResultControls` exposes a *Show mesh wireframe* checkbox that
+    auto-disables when the open dataset has no detectable UGRID mesh.
+  - `ResultPanel` caches the parsed mesh per file so toggling the
+    overlay does not re-open the dataset.
+- **9 new tests** (`test_mesh_adapter.py`) covering availability /
+  version probes, missing-file handling, the xugrid path, the
+  heuristic fallback, the `MeshGeometry` count properties and a
+  full NetCDF round-trip on disk. Total: **129 tests** passing.
+
 ## [0.1.0a1] - 2026-05-11
 
 First public alpha release. Ships everything needed to open, edit, run

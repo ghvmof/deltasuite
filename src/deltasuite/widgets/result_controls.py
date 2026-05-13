@@ -77,6 +77,8 @@ class ResultControls(QWidget):
     """Emitted with the new state when the user toggles the U/V overlay."""
     vector_stride_changed = Signal(int)
     """Emitted with the new sampling stride for the vector overlay."""
+    mesh_overlay_toggled = Signal(bool)
+    """Emitted when the user toggles the mesh wireframe overlay."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -210,6 +212,14 @@ class ResultControls(QWidget):
 
         # Wire enable/disable of the stride spin to the checkbox.
         self._uv_check.toggled.connect(self._uv_stride_spin.setEnabled)
+
+        # Mesh wireframe overlay (separate row, shares the same group box
+        # since both are "extra layers" of the map).
+        self._mesh_check = QCheckBox("Show mesh wireframe")
+        self._mesh_check.setChecked(False)
+        self._mesh_check.setEnabled(False)
+        self._mesh_check.toggled.connect(self.mesh_overlay_toggled)
+        layout.addWidget(self._mesh_check)
         return box
 
     def _build_range_box(self) -> QFrame:
@@ -311,6 +321,16 @@ class ResultControls(QWidget):
     def vector_overlay_stride(self) -> int:
         """Current stride value for U/V down-sampling."""
         return int(self._uv_stride_spin.value())
+
+    def set_mesh_overlay_available(self, available: bool) -> None:
+        """Enable / disable the mesh-wireframe checkbox."""
+        self._mesh_check.setEnabled(available)
+        if not available:
+            self._mesh_check.setChecked(False)
+
+    def mesh_overlay_enabled(self) -> bool:
+        """Whether the mesh wireframe checkbox is currently checked."""
+        return bool(self._mesh_check.isChecked())
 
     def set_value_extents(self, vmin: float, vmax: float) -> None:
         """Pre-fill the manual min/max with the autoscale values."""

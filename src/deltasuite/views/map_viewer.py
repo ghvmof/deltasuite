@@ -20,10 +20,11 @@ from matplotlib.figure import Figure
 from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 
 from deltasuite.core.dfm_tools_adapter import UVField
+from deltasuite.core.mesh_adapter import MeshGeometry
 from deltasuite.core.results import Field2D, GridKind
 
 if TYPE_CHECKING:
-    from matplotlib.collections import Collection
+    from matplotlib.collections import Collection, LineCollection
     from matplotlib.colorbar import Colorbar
     from matplotlib.quiver import Quiver
 
@@ -57,6 +58,10 @@ class MapViewerWidget(QWidget):
         self._uv_color: str = "white"
         self._uv_scale: float | None = None
         """``None`` -> let matplotlib autoscale."""
+        self._mesh_overlay: MeshGeometry | None = None
+        self._mesh_artist: LineCollection | None = None
+        self._mesh_color: str = "#444"
+        self._mesh_lw: float = 0.4
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -109,11 +114,24 @@ class MapViewerWidget(QWidget):
         if self._field is not None:
             self._render()
 
+    def set_mesh_overlay(self, mesh: MeshGeometry | None) -> None:
+        """Overlay a mesh wireframe on top of the colour map.
+
+        Pass ``mesh=None`` to remove an existing wireframe. The mesh is
+        drawn as a thin grey ``LineCollection`` and re-rendered each
+        time the underlying field is redrawn.
+        """
+        self._mesh_overlay = mesh
+        if self._field is not None:
+            self._render()
+
     def clear(self) -> None:
         """Remove the current plot and reset the canvas."""
         self._field = None
         self._uv = None
         self._quiver = None
+        self._mesh_overlay = None
+        self._mesh_artist = None
         self._show_placeholder("No data loaded")
 
     def current_field(self) -> Field2D | None:
@@ -158,6 +176,12 @@ class MapViewerWidget(QWidget):
         units = f" [{field.units}]" if field.units else ""
         self._colorbar.set_label(f"{field.name}{units}")
 
+        # Optional mesh wireframe under the vector overlay so arrows stay
+        # readable.
+        self._mesh_artist = None
+        if self._mesh_overlay is not None:
+            self._mesh_artist = self._draw_mesh_overlay(self._mesh_overlay)
+
         # Optional vector overlay on top of the colour mesh.
         self._quiver = None
         if self._uv is not None:
@@ -169,6 +193,35 @@ class MapViewerWidget(QWidget):
         self._axes.set_title("  -  ".join(title_parts))
 
         self._canvas.draw_idle()  # type: ignore[no-untyped-call]
+
+    def _draw_mesh_overlay(self, mesh: MeshGeometry) -> LineCollection | None:
+        """Draw the mesh as a ``LineCollection`` of edges. Returns the artist."""
+        from matplotlib.collections import LineCollection
+
+        if mesh.n_edges == 0:
+            return None
+        nx = mesh.node_x
+        ny = mesh.node_y
+        # Filter out edges with sentinel nodes (e.g. -1 padding).
+        edges = mesh.edge_nodes
+        mask = (edges >= 0).all(axis=1) & (edges < nx.size).all(axis=1)
+        if not mask.any():
+            return None
+        edges = edges[mask]
+        segments = np.empty((edges.shape[0], 2, 2), dtype=float)
+        segments[:, 0, 0] = nx[edges[:, 0]]
+        segments[:, 0, 1] = ny[edges[:, 0]]
+        segments[:, 1, 0] = nx[edges[:, 1]]
+        segments[:, 1, 1] = ny[edges[:, 1]]
+        artist = LineCollection(
+            segments,  # type: ignore[arg-type]
+            colors=self._mesh_color,
+            linewidths=self._mesh_lw,
+            alpha=0.6,
+            zorder=2,
+        )
+        self._axes.add_collection(artist)
+        return artist
 
     def _draw_uv_overlay(self, uv: UVField) -> Quiver | None:
         """Add a ``quiver`` for ``uv`` and return the artist (or ``None``)."""
