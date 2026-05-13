@@ -7,8 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0a2] - 2026-05-13
+
+Second alpha. Adds the official **Deltares Python stack** integration
+(`hydrolib-core`, `dfm-tools`, `meshkernel` / `xugrid`) and three new
+visible features in the Map tab built on top of those libraries.
+
 ### Added
 
+- **hydrolib-core integration (`core/hydrolib_adapter.py`)**
+  - `safe_load_fmmodel()` returns a `HydrolibLoadResult` that exposes
+    either a typed `FMModel` (when hydrolib-core is installed) or a
+    structured error, never raises through the GUI.
+  - `fmmodel_section_summary()` / `fmmodel_set_values()` so the Setup
+    tab can use the canonical schema without depending on the import
+    happening at GUI startup.
+  - Cached availability and version probes
+    (`is_hydrolib_available`, `hydrolib_version`).
+- **dfm-tools integration (`core/dfm_tools_adapter.py`) + U/V vector
+  overlay**
+  - `open_partitioned_smart()` / `open_curvilinear_smart()` wrap
+    `dfmt.open_partitioned_dataset` / `dfmt.open_dataset_curvilinear`
+    with graceful fallbacks to plain xarray when dfm-tools is not
+    installed.
+  - `find_uv_variables()` and `extract_uv_field()` produce a
+    library-agnostic `UVField` (x, y, u, v, magnitude, optional time).
+  - `MapViewerWidget.set_vector_overlay()` draws the `quiver` on top
+    of the colour mesh with configurable colour, scale and stride.
+  - `ResultControls` exposes a *Show U/V vectors* row with a stride
+    spin box that auto-disables when the dataset has no recognised
+    velocity pair.
 - **MeshKernel / xugrid integration (`core/mesh_adapter.py`)**
   - Library-agnostic `MeshGeometry` dataclass (nodes, edges, optional
     face-node connectivity) and `MeshLoadResult` wrapper.
@@ -262,5 +290,6 @@ they affect anyone reusing this build pipeline:
   - Sphinx documentation skeleton with auto-generated API reference
   - GPL-3.0 license, CONTRIBUTING and CODE_OF_CONDUCT
 
-[Unreleased]: https://github.com/ghvmof/deltasuite/compare/v0.1.0a1...HEAD
+[Unreleased]: https://github.com/ghvmof/deltasuite/compare/v0.1.0a2...HEAD
+[0.1.0a2]: https://github.com/ghvmof/deltasuite/compare/v0.1.0a1...v0.1.0a2
 [0.1.0a1]: https://github.com/ghvmof/deltasuite/releases/tag/v0.1.0a1

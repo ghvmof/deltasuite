@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "deltasuite"
-version = "0.1.0a1"
+version = "0.1.0a2"
 description = "Open source desktop suite for pre-processing, running and post-processing Delft3D models"
 readme = "README.md"
 requires-python = ">=3.11"

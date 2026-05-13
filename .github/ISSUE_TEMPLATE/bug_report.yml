@@ -47,7 +47,7 @@ body:
     attributes:
       label: DeltaSuite version
       description: Output of `deltasuite --version` (or the value shown in Help → About).
-      placeholder: "0.1.0a1"
+      placeholder: "0.1.0a2"
     validations:
       required: true
 
