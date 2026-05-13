@@ -7,6 +7,184 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0a3] - 2026-05-13
+
+### Added
+
+- **Delft3D `.dep` bathymetry reader / writer (`mesh/io_dep.py`)**
+  - `DepthField` dataclass: per-node `node_values` array (length
+    `mesh.n_nodes`, NaN for missing samples) plus the original
+    `missing_value` and the auto-detected `layout` tag for diagnostics.
+  - `load_dep_samples(path, mesh)` parses the legacy ASCII format used
+    by every Delft3D 4 / SWAN project. Auto-detects the layout from
+    the file size and the mesh's `structured_shape`:
+    - `corners_extra` (DPV, `(N+1) x (M+1)` values, the most common)
+      -- the trailing sentinel row / column is dropped on load;
+    - `nodes` (`M x N`, aligned one-to-one with the grid nodes);
+    - `centers` (`(M-1) x (N-1)`) is detected and rejected with a
+      clear error -- there is no lossless mapping to per-node
+      values without interpolation.
+  - Recognises both the decimal (`-999.000`) and the scientific
+    (`-9.99E+02`) missing-value flavours used in the wild, with a
+    configurable tolerance.
+  - `save_dep_samples(field, path, mesh)` always writes the canonical
+    `corners_extra` layout (twelve scientific-notation values per line),
+    serialising NaN samples back to `missing_value` and appending the
+    sentinel row / column automatically. Round-trips bit-for-bit
+    through `load_dep_samples`.
+- **Bathymetry in the *Mesh* tab**
+  - New "Bathymetry (.dep)" group in `MeshControls` with an
+    *Open depth (.dep)…* button and a *Clear depth* button, plus a
+    status label that shows the source file, the `valid / total`
+    sample count and the value range once a field is loaded.
+  - `MeshViewerWidget` learnt `set_depth(field)`: when a depth field
+    is attached, faces are coloured by mean nodal depth via a
+    `PolyCollection` and a colourbar is overlaid; the wireframe is
+    still drawn on top so the topology stays legible.
+  - Loading or clearing a mesh automatically drops the depth field
+    (it is keyed by node count, so it cannot survive topology changes).
+- **Bathymetry in the *3D* tab**
+  - `Mesh3DPanel` now accepts an optional `depth_provider` callable;
+    on every `refresh_from_provider()` it pulls the active depth from
+    the *Mesh* tab and feeds the values into the existing
+    `Mesh3DViewerWidget.set_node_values()` slot. The demo radial
+    extrusion is replaced by the real bathymetry as soon as a `.dep`
+    is loaded; clearing the depth or the mesh restores it.
+  - `MainWindow` wires `MeshPanel.current_depth` as the
+    `depth_provider`, so the user only has to load the file once and
+    the *3D* tab picks it up automatically when it becomes visible.
+- **19 new tests** covering the reader, the writer, NaN round-trips,
+  the layout auto-detector (and centres rejection), error paths, plus
+  three real-file smoke tests against `f34.dep`, `weir.dep` and
+  `coastw20.dep` shipped with the workspace examples (skipped when
+  the workspace is not present). Total: **208 tests** passing.
+
+### Changed
+
+- `tests/conftest.py`, `tests/test_hydrolib_adapter.py`,
+  `tests/test_recent.py`: ruff `PT001` auto-fix changed
+  `@pytest.fixture()` to `@pytest.fixture` -- pure stylistic, no
+  behavioural change.
+
+- **Delft3D RGFGRID `.grd` reader / writer (`mesh/io_grd.py`)**
+  - `load_grd_mesh()` parses the legacy ASCII format used by every
+    `examples/delft3d4/*` project (and by the SWAN sub-models of
+    every `examples/dflowfm/*_dwaves` project): comment block,
+    `Coordinate System`, optional `Missing Value`, `M N`
+    dimensions, `0 0 0` triplet and `2*N` `ETA= i` blocks
+    (X-coordinates first, then Y). Tolerant to any number of values
+    per line and to UTF-8 / Latin-1 encodings.
+  - `save_grd_mesh()` writes a Deltares-style `.grd` from a
+    `MeshGeometry` whose `structured_shape` is known (i.e. produced
+    by `make_rectangular_mesh` or read from `.grd`); returns a
+    structured error for triangulated / locally-refined meshes
+    instead of guessing.
+  - Vectorised `_build_structured_edges` / `_build_structured_faces`
+    using NumPy broadcasting -- a 66×75 `coastw.grd` (~5 k nodes,
+    ~10 k edges) loads in under 5 ms.
+- **Delft3D `.enc` enclosure reader / writer (`mesh/io_enc.py`)**
+  - `Enclosure` dataclass that carries the polygon as `(m, n)`
+    integer indices and, when paired with a structured mesh, also
+    the corresponding real-world `(x, y)` coordinates.
+  - `load_enc()` auto-closes open polygons, ignores comments
+    (`*** begin/end external enclosure`), validates index bounds
+    when a parent mesh is supplied.
+  - `save_enc()` writes the canonical right-aligned 8-column format.
+- **Structured-grid bookkeeping in `MeshGeometry`**
+  - New optional `structured_shape: tuple[int, int]` field plus
+    `is_structured` property; `make_rectangular_mesh` populates it
+    automatically with `(n_rows + 1, n_columns + 1)` so the result
+    can be round-tripped to `.grd`.
+- **Mesh tab dispatches by extension**
+  - The *Open mesh…* file dialog now accepts `*.nc *.grd` (with
+    a combined "All supported meshes" filter).
+  - The *Save mesh as…* dialog defaults to `mesh.grd` for
+    structured meshes and `mesh.nc` otherwise; the extension
+    chosen by the user picks the writer (`save_grd_mesh` vs
+    `save_mesh_to_ugrid_netcdf`).
+- **23 new tests** covering both writers, both readers, the
+  round-trip path, the GUI dispatcher and a smoke-load of every
+  `.grd` / `.enc` shipped with the workspace examples (skipped
+  when the workspace is not present). Total: **189 tests** passing.
+
+### Fixed
+
+- **`refine_mesh_inside_polygon` failed on freshly-generated meshes**
+  with `ConstraintError: Mesh::FindEdge: Invalid node index: first
+  X, second 4294967295`. The `MeshGeometry → meshkernel.Mesh2d`
+  converter was passing our padded `face_nodes` matrix straight
+  into `meshkernel.Mesh2d`, whose `mesh2d_set` is sensitive to
+  the face winding. The fix is to pass *only* `node_x`, `node_y`
+  and `edge_nodes` and let MeshKernel rebuild the face topology
+  internally. A new regression test
+  (`test_refine_inside_polygon_full_extent_regression`) reproduces
+  the original GUI scenario.
+
+- **3-D mesh viewer (`views/mesh3d_viewer.py`)**
+  - `Mesh3DViewerWidget` -- matplotlib `Axes3D` canvas with the
+    standard navigation toolbar; renders the active mesh as a
+    `Poly3DCollection` (faces, colour-mapped by mean Z) plus a
+    `Line3DCollection` (edges). Two display modes: *flat* (z=0,
+    handy as a sanity preview) and *demo extruded* (smooth radial
+    sinusoid scaled to ~10 % of the mesh extent).
+  - Per-node Z values can be supplied via `set_node_values()` so
+    bathymetry / water-level fields can drive the extrusion later
+    without changing the API.
+- **3-D side controls (`widgets/mesh3d_controls.py`)**
+  - `Mesh3DControls` -- mode selector, Z-scale spin box, faces /
+    edges toggles, colormap picker (viridis / plasma / magma /
+    cividis / turbo / terrain / RdBu_r) and elevation / azimuth
+    sliders. Emits one typed Qt signal per control.
+- **3-D coordinator (`views/mesh3d_panel.py`)**
+  - `Mesh3DPanel` -- splitter that pairs the viewer with its
+    controls and pulls the geometry from the *Mesh* tab via a
+    `mesh_provider` callable, so the source of truth stays in the
+    editor.
+- **New 3D tab in `MainWindow`**
+  - Wired as the sixth workspace tab (after *Mesh*) and auto-syncs
+    with the *Mesh* tab whenever the user switches to it.
+  - Graceful `shutdown()` hook.
+- **6 new GUI smoke tests** (`tests/test_mesh3d_panel.py`) covering
+  the viewer (flat + extruded modes, all setters), the controls
+  (default colormaps, mode selection) and the panel (provider sync,
+  direct `set_mesh`, signal-driven viewer updates).
+  Total: **165 tests** passing.
+
+- **Mesh editing back end (`deltasuite.mesh`)**
+  - `mesh/generate.py`: `make_rectangular_mesh()` (uniform M×N grid
+    with optional rotation) and `make_triangular_mesh_from_polygon()`
+    (Delaunay) wrapping `meshkernel`; both return a structured
+    `MeshOpResult` so failures (including missing `meshkernel`) flow
+    as data, not exceptions.
+  - `mesh/refine.py`: `refine_mesh_inside_polygon()` (Casulli) and
+    `refine_mesh_based_on_samples()` (adaptive, sample-driven).
+  - `mesh/edit.py`: `orthogonalize_mesh()`, `move_node()`,
+    `delete_node()`, `merge_nearby_nodes()` and a pure-Python
+    `hanging_edges()` linter.
+  - `mesh/io.py`: `save_mesh_to_ugrid_netcdf()` and `round_trip_mesh()`
+    -- writes CF-1.8 / UGRID-1.0 NetCDF using D-Flow FM's canonical
+    variable names (`mesh2d`, `mesh2d_node_x/y`, `mesh2d_edge_nodes`,
+    `mesh2d_face_nodes`) without depending on `meshkernel`.
+- **New *Mesh* tab in the main window**
+  - `views/mesh_viewer.py`: standalone matplotlib canvas
+    (`MeshViewerWidget`) that renders any `MeshGeometry` as a
+    `LineCollection` with the navigation toolbar, an aspect-correct
+    axis and a one-line summary (`N nodes / N edges / N faces`).
+  - `widgets/mesh_controls.py`: side panel with one button per
+    high-level operation (Open, Save, Generate rectangular, Refine,
+    Orthogonalise, Clear) and the relevant spin boxes; emits one
+    typed Qt signal per action so the surrounding panel sequences
+    the work.
+  - `views/mesh_panel.py`: `MeshPanel` glue widget that owns the
+    current `MeshGeometry`, dispatches every `MeshControls` signal to
+    the matching `deltasuite.mesh` operation and surfaces errors via
+    `QMessageBox` + a status line.
+  - Integrated as the fifth workspace tab (after *Series*) in
+    `MainWindow`, with a graceful `shutdown()` hook.
+- **30 new tests** covering the four back-end modules, the viewer,
+  the controls and the panel (signals, button enabling, generate /
+  save / open round-trip). Total: **159 tests** passing.
+
 ## [0.1.0a2] - 2026-05-13
 
 Second alpha. Adds the official **Deltares Python stack** integration
