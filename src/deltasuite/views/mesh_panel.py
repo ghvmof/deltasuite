@@ -23,9 +23,11 @@ from PySide6.QtWidgets import (
 
 from deltasuite.core.mesh_adapter import load_mesh_from_path
 from deltasuite.mesh import (
+    load_grd_mesh,
     make_rectangular_mesh,
     orthogonalize_mesh,
     refine_mesh_inside_polygon,
+    save_grd_mesh,
     save_mesh_to_ugrid_netcdf,
 )
 from deltasuite.views.mesh_viewer import MeshViewerWidget
@@ -129,35 +131,51 @@ class MeshPanel(QWidget):
     def _on_open_mesh(self) -> None:
         path_str, _ = QFileDialog.getOpenFileName(
             self,
-            "Open UGRID NetCDF mesh",
+            "Open mesh (UGRID NetCDF or Delft3D RGFGRID)",
             "",
-            "NetCDF mesh files (*.nc);;All files (*)",
+            (
+                "All supported meshes (*.nc *.grd);;"
+                "UGRID NetCDF (*.nc);;"
+                "Delft3D RGFGRID (*.grd);;"
+                "All files (*)"
+            ),
         )
         if not path_str:
             return
-        result = load_mesh_from_path(Path(path_str))
+        path = Path(path_str)
+        result = load_grd_mesh(path) if path.suffix.lower() == ".grd" else load_mesh_from_path(path)
         if not result.ok:
             self._error("Open mesh", result.error or "unknown error")
             return
         self._set_mesh(result.mesh)
-        self._controls.set_status(f"Opened {Path(path_str).name}.")
+        self._controls.set_status(f"Opened {path.name}.")
 
     def _on_save_mesh(self) -> None:
         if self._mesh is None:
             return
+        # Default suffix depends on whether the mesh is structured. A
+        # locally-refined or triangular mesh cannot be saved as .grd,
+        # so we pre-select .nc to avoid the user picking an extension
+        # that we'll reject later.
+        default_name = "mesh.grd" if self._mesh.is_structured else "mesh.nc"
         path_str, _ = QFileDialog.getSaveFileName(
             self,
-            "Save mesh as UGRID NetCDF",
-            "mesh.nc",
-            "NetCDF files (*.nc);;All files (*)",
+            "Save mesh as…",
+            default_name,
+            ("UGRID NetCDF (*.nc);;" "Delft3D RGFGRID (*.grd);;" "All files (*)"),
         )
         if not path_str:
             return
-        result = save_mesh_to_ugrid_netcdf(self._mesh, Path(path_str))
+        path = Path(path_str)
+        result = (
+            save_grd_mesh(self._mesh, path)
+            if path.suffix.lower() == ".grd"
+            else save_mesh_to_ugrid_netcdf(self._mesh, path)
+        )
         if not result.ok:
             self._error("Save mesh", result.error or "unknown error")
             return
-        self._controls.set_status(f"Saved {Path(path_str).name}.")
+        self._controls.set_status(f"Saved {path.name}.")
 
     def _on_clear(self) -> None:
         self._set_mesh(None)

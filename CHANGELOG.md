@@ -9,6 +9,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Delft3D RGFGRID `.grd` reader / writer (`mesh/io_grd.py`)**
+  - `load_grd_mesh()` parses the legacy ASCII format used by every
+    `examples/delft3d4/*` project (and by the SWAN sub-models of
+    every `examples/dflowfm/*_dwaves` project): comment block,
+    `Coordinate System`, optional `Missing Value`, `M N`
+    dimensions, `0 0 0` triplet and `2*N` `ETA= i` blocks
+    (X-coordinates first, then Y). Tolerant to any number of values
+    per line and to UTF-8 / Latin-1 encodings.
+  - `save_grd_mesh()` writes a Deltares-style `.grd` from a
+    `MeshGeometry` whose `structured_shape` is known (i.e. produced
+    by `make_rectangular_mesh` or read from `.grd`); returns a
+    structured error for triangulated / locally-refined meshes
+    instead of guessing.
+  - Vectorised `_build_structured_edges` / `_build_structured_faces`
+    using NumPy broadcasting -- a 66×75 `coastw.grd` (~5 k nodes,
+    ~10 k edges) loads in under 5 ms.
+- **Delft3D `.enc` enclosure reader / writer (`mesh/io_enc.py`)**
+  - `Enclosure` dataclass that carries the polygon as `(m, n)`
+    integer indices and, when paired with a structured mesh, also
+    the corresponding real-world `(x, y)` coordinates.
+  - `load_enc()` auto-closes open polygons, ignores comments
+    (`*** begin/end external enclosure`), validates index bounds
+    when a parent mesh is supplied.
+  - `save_enc()` writes the canonical right-aligned 8-column format.
+- **Structured-grid bookkeeping in `MeshGeometry`**
+  - New optional `structured_shape: tuple[int, int]` field plus
+    `is_structured` property; `make_rectangular_mesh` populates it
+    automatically with `(n_rows + 1, n_columns + 1)` so the result
+    can be round-tripped to `.grd`.
+- **Mesh tab dispatches by extension**
+  - The *Open mesh…* file dialog now accepts `*.nc *.grd` (with
+    a combined "All supported meshes" filter).
+  - The *Save mesh as…* dialog defaults to `mesh.grd` for
+    structured meshes and `mesh.nc` otherwise; the extension
+    chosen by the user picks the writer (`save_grd_mesh` vs
+    `save_mesh_to_ugrid_netcdf`).
+- **23 new tests** covering both writers, both readers, the
+  round-trip path, the GUI dispatcher and a smoke-load of every
+  `.grd` / `.enc` shipped with the workspace examples (skipped
+  when the workspace is not present). Total: **189 tests** passing.
+
+### Fixed
+
+- **`refine_mesh_inside_polygon` failed on freshly-generated meshes**
+  with `ConstraintError: Mesh::FindEdge: Invalid node index: first
+  X, second 4294967295`. The `MeshGeometry → meshkernel.Mesh2d`
+  converter was passing our padded `face_nodes` matrix straight
+  into `meshkernel.Mesh2d`, whose `mesh2d_set` is sensitive to
+  the face winding. The fix is to pass *only* `node_x`, `node_y`
+  and `edge_nodes` and let MeshKernel rebuild the face topology
+  internally. A new regression test
+  (`test_refine_inside_polygon_full_extent_regression`) reproduces
+  the original GUI scenario.
+
 - **3-D mesh viewer (`views/mesh3d_viewer.py`)**
   - `Mesh3DViewerWidget` -- matplotlib `Axes3D` canvas with the
     standard navigation toolbar; renders the active mesh as a

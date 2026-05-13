@@ -84,3 +84,40 @@ def test_mesh_panel_save_and_open_round_trip(qtbot, tmp_path: Path) -> None:  # 
     save = save_mesh_to_ugrid_netcdf(panel.current_mesh(), target)  # type: ignore[arg-type]
     assert save.ok
     assert target.is_file()
+
+
+def test_mesh_panel_grd_dispatch_round_trip(qtbot, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    """Save a generated mesh as .grd then re-open through the panel API."""
+    pytest.importorskip("meshkernel")
+    from deltasuite.core.mesh_adapter import load_mesh_from_path
+    from deltasuite.mesh import (
+        load_grd_mesh,
+        make_rectangular_mesh,
+        save_grd_mesh,
+    )
+
+    gen = make_rectangular_mesh(origin_x=0.0, origin_y=0.0, n_columns=3, n_rows=2, cell_size=5.0)
+    assert gen.ok
+    mesh = gen.mesh
+    assert mesh is not None
+    assert mesh.is_structured
+
+    panel = MeshPanel()
+    qtbot.addWidget(panel)
+    panel._set_mesh(mesh)
+
+    target_grd = tmp_path / "panel.grd"
+    save = save_grd_mesh(panel.current_mesh(), target_grd)  # type: ignore[arg-type]
+    assert save.ok, save.error
+    assert target_grd.is_file()
+
+    reload = load_grd_mesh(target_grd)
+    assert reload.ok, reload.error
+    panel._set_mesh(reload.mesh)
+    assert panel.current_mesh() is not None
+    # Sanity-check that the alternative loader (NetCDF dispatcher) is
+    # still wired correctly for .nc files coming back through.
+    target_nc = tmp_path / "panel.nc"
+    save_mesh_to_ugrid_netcdf(panel.current_mesh(), target_nc)  # type: ignore[arg-type]
+    nc_back = load_mesh_from_path(target_nc)
+    assert nc_back.ok, nc_back.error

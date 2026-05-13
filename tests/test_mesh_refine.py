@@ -87,3 +87,39 @@ def test_refine_inside_polygon_increases_node_count() -> None:
     refined_mesh = refined.mesh
     assert refined_mesh is not None
     assert refined_mesh.n_nodes > base_nodes
+
+
+def test_refine_inside_polygon_full_extent_regression() -> None:
+    """Regression test for the GUI ``Refine`` button.
+
+    Calling ``refine_mesh_inside_polygon`` with a polygon equal to the
+    mesh bounding box (which is what ``MeshPanel`` does) used to raise
+    ``ConstraintError: Mesh::FindEdge: Invalid node index`` because
+    we were passing our padded ``face_nodes`` matrix straight into
+    ``meshkernel.Mesh2d``. The fix is to let MeshKernel rebuild the
+    face topology from ``edge_nodes``; this test guards against any
+    future regression.
+    """
+    pytest.importorskip("meshkernel")
+    base = make_rectangular_mesh(
+        origin_x=0.0,
+        origin_y=0.0,
+        n_columns=4,
+        n_rows=4,
+        cell_size=1.0,
+    )
+    assert base.ok
+    base_mesh = base.mesh
+    assert base_mesh is not None
+    bbox_x = [0.0, 4.0, 4.0, 0.0, 0.0]
+    bbox_y = [0.0, 0.0, 4.0, 4.0, 0.0]
+    refined = refine_mesh_inside_polygon(
+        base_mesh,
+        polygon_x=bbox_x,
+        polygon_y=bbox_y,
+        n_iterations=1,
+    )
+    assert refined.ok, f"unexpected error: {refined.error}"
+    refined_mesh = refined.mesh
+    assert refined_mesh is not None
+    assert refined_mesh.n_nodes > base_mesh.n_nodes

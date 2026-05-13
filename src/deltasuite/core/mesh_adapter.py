@@ -95,12 +95,19 @@ class MeshGeometry:
     * ``face_nodes`` -- ``(n_faces, max_vertices_per_face)`` array padded
       with ``-1`` (UGRID convention). Optional; ``None`` if the source
       did not expose face connectivity.
+    * ``structured_shape`` -- when the mesh has a curvilinear,
+      structured layout (e.g. produced by ``make_rectangular_mesh``
+      or read from a Delft3D ``.grd`` file), this stores the
+      ``(n_rows, n_columns)`` of mesh **nodes** so it can be
+      serialised back to the legacy RGFGRID format. ``None`` for any
+      mesh that has been refined / edited locally.
     """
 
     node_x: NDArray[np.floating]
     node_y: NDArray[np.floating]
     edge_nodes: NDArray[np.integer]
     face_nodes: NDArray[np.integer] | None = None
+    structured_shape: tuple[int, int] | None = None
 
     @property
     def n_nodes(self) -> int:
@@ -113,6 +120,11 @@ class MeshGeometry:
     @property
     def n_faces(self) -> int:
         return 0 if self.face_nodes is None else int(self.face_nodes.shape[0])
+
+    @property
+    def is_structured(self) -> bool:
+        """``True`` when the mesh carries a known structured layout."""
+        return self.structured_shape is not None
 
 
 @dataclass(frozen=True, slots=True)

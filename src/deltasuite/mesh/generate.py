@@ -139,7 +139,12 @@ def make_rectangular_mesh(
         logger.warning("meshkernel rectangular generation failed: {}", exc)
         return MeshOpResult(error=_sanitise(exc))
 
-    return MeshOpResult(mesh=_mesh2d_to_geometry(mesh2d))
+    geom = _mesh2d_to_geometry(mesh2d)
+    # Tag the structured layout so the .grd writer can reconstruct
+    # the (rows, columns) ordering later.
+    from dataclasses import replace
+
+    return MeshOpResult(mesh=replace(geom, structured_shape=(int(n_rows) + 1, int(n_columns) + 1)))
 
 
 # ---------------------------------------------------------------------------
@@ -191,26 +196,25 @@ def _geometry_to_mesh2d(geom: MeshGeometry) -> Any:
 
     Imported locally so the function is a no-op cost when meshkernel is
     not installed (it will raise the ``ImportError`` only if called).
+
+    .. note::
+       We deliberately pass *only* ``node_x``, ``node_y`` and
+       ``edge_nodes``. ``meshkernel`` rebuilds the face topology
+       internally from those three arrays, and is sensitive to the
+       exact winding / orientation of any caller-supplied
+       ``face_nodes`` array. Passing a flattened version of our own
+       ``MeshGeometry.face_nodes`` (which uses ``-1`` padding to make
+       the matrix rectangular) was triggering
+       ``ConstraintError: Mesh::FindEdge: Invalid node index`` in
+       ``mesh2d_casulli_refinement_on_polygon`` and friends. Letting
+       ``meshkernel`` regenerate the faces is both safer and faster.
     """
     import meshkernel as mk
-
-    edge_nodes_flat = np.asarray(geom.edge_nodes, dtype=np.int32).ravel()
-
-    if geom.face_nodes is not None:
-        rows = geom.face_nodes
-        valid = rows != -1
-        nodes_per_face = valid.sum(axis=1).astype(np.int32)
-        face_nodes_flat = rows[valid].astype(np.int32)
-    else:
-        nodes_per_face = np.empty(0, dtype=np.int32)
-        face_nodes_flat = np.empty(0, dtype=np.int32)
 
     return mk.Mesh2d(
         node_x=np.asarray(geom.node_x, dtype=np.float64),
         node_y=np.asarray(geom.node_y, dtype=np.float64),
-        edge_nodes=edge_nodes_flat,
-        face_nodes=face_nodes_flat,
-        nodes_per_face=nodes_per_face,
+        edge_nodes=np.asarray(geom.edge_nodes, dtype=np.int32).ravel(),
     )
 
 
