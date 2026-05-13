@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0a2] - 2026-05-13
+
+Second alpha. Adds the official **Deltares Python stack** integration
+(`hydrolib-core`, `dfm-tools`, `meshkernel` / `xugrid`) and three new
+visible features in the Map tab built on top of those libraries.
+
+### Added
+
+- **hydrolib-core integration (`core/hydrolib_adapter.py`)**
+  - `safe_load_fmmodel()` returns a `HydrolibLoadResult` that exposes
+    either a typed `FMModel` (when hydrolib-core is installed) or a
+    structured error, never raises through the GUI.
+  - `fmmodel_section_summary()` / `fmmodel_set_values()` so the Setup
+    tab can use the canonical schema without depending on the import
+    happening at GUI startup.
+  - Cached availability and version probes
+    (`is_hydrolib_available`, `hydrolib_version`).
+- **dfm-tools integration (`core/dfm_tools_adapter.py`) + U/V vector
+  overlay**
+  - `open_partitioned_smart()` / `open_curvilinear_smart()` wrap
+    `dfmt.open_partitioned_dataset` / `dfmt.open_dataset_curvilinear`
+    with graceful fallbacks to plain xarray when dfm-tools is not
+    installed.
+  - `find_uv_variables()` and `extract_uv_field()` produce a
+    library-agnostic `UVField` (x, y, u, v, magnitude, optional time).
+  - `MapViewerWidget.set_vector_overlay()` draws the `quiver` on top
+    of the colour mesh with configurable colour, scale and stride.
+  - `ResultControls` exposes a *Show U/V vectors* row with a stride
+    spin box that auto-disables when the dataset has no recognised
+    velocity pair.
+- **MeshKernel / xugrid integration (`core/mesh_adapter.py`)**
+  - Library-agnostic `MeshGeometry` dataclass (nodes, edges, optional
+    face-node connectivity) and `MeshLoadResult` wrapper.
+  - `load_mesh_from_dataset()` and `load_mesh_from_path()` with two
+    backends: `xugrid` when installed (canonical UGRID parser), and a
+    pure-numpy heuristic fallback that recognises the standard
+    `mesh2d_*` variable names (with automatic 1-based → 0-based
+    normalisation for both edge and face connectivity, preserving the
+    `-1` sentinel for ragged faces).
+  - Cached availability and version probes
+    (`is_xugrid_available`, `xugrid_version`,
+    `is_meshkernel_available`, `meshkernel_version`) so the GUI can
+    enable / disable the wireframe row without paying the cost of
+    importing the C++ extension.
+  - All eight new symbols re-exported from `deltasuite.core`.
+- **Mesh wireframe overlay in the Map tab**
+  - `MapViewerWidget.set_mesh_overlay()` adds a thin grey
+    `LineCollection` of mesh edges below the U/V quiver (so arrows
+    stay readable). Sentinel-padded edges (`-1` UGRID convention) are
+    filtered out.
+  - `ResultControls` exposes a *Show mesh wireframe* checkbox that
+    auto-disables when the open dataset has no detectable UGRID mesh.
+  - `ResultPanel` caches the parsed mesh per file so toggling the
+    overlay does not re-open the dataset.
+- **9 new tests** (`test_mesh_adapter.py`) covering availability /
+  version probes, missing-file handling, the xugrid path, the
+  heuristic fallback, the `MeshGeometry` count properties and a
+  full NetCDF round-trip on disk. Total: **129 tests** passing.
+
 ## [0.1.0a1] - 2026-05-11
 
 First public alpha release. Ships everything needed to open, edit, run
@@ -231,5 +290,6 @@ they affect anyone reusing this build pipeline:
   - Sphinx documentation skeleton with auto-generated API reference
   - GPL-3.0 license, CONTRIBUTING and CODE_OF_CONDUCT
 
-[Unreleased]: https://github.com/ghvmof/deltasuite/compare/v0.1.0a1...HEAD
+[Unreleased]: https://github.com/ghvmof/deltasuite/compare/v0.1.0a2...HEAD
+[0.1.0a2]: https://github.com/ghvmof/deltasuite/compare/v0.1.0a1...v0.1.0a2
 [0.1.0a1]: https://github.com/ghvmof/deltasuite/releases/tag/v0.1.0a1

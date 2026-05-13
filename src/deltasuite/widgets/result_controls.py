@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSizePolicy,
     QSlider,
+    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
@@ -72,6 +73,12 @@ class ResultControls(QWidget):
     time_changed = Signal(int)
     colormap_changed = Signal(str)
     range_changed = Signal(object, object)
+    vector_overlay_toggled = Signal(bool)
+    """Emitted with the new state when the user toggles the U/V overlay."""
+    vector_stride_changed = Signal(int)
+    """Emitted with the new sampling stride for the vector overlay."""
+    mesh_overlay_toggled = Signal(bool)
+    """Emitted when the user toggles the mesh wireframe overlay."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -88,6 +95,7 @@ class ResultControls(QWidget):
         outer.addLayout(self._build_combo_form())
         outer.addWidget(self._build_time_box())
         outer.addWidget(self._build_range_box())
+        outer.addWidget(self._build_vector_box())
 
         self._info_label = QLabel("No dataset loaded.")
         self._info_label.setWordWrap(True)
@@ -178,6 +186,42 @@ class ResultControls(QWidget):
         layout.addLayout(playback)
         return box
 
+    def _build_vector_box(self) -> QFrame:
+        box = QFrame()
+        box.setFrameShape(QFrame.Shape.StyledPanel)
+        layout = QVBoxLayout(box)
+        layout.setContentsMargins(8, 6, 8, 6)
+        layout.addWidget(self._make_bold_label("Vector overlay"))
+
+        self._uv_check = QCheckBox("Show U/V arrows on map")
+        self._uv_check.setChecked(False)
+        self._uv_check.setEnabled(False)
+        self._uv_check.toggled.connect(self.vector_overlay_toggled)
+        layout.addWidget(self._uv_check)
+
+        row = QHBoxLayout()
+        row.addWidget(QLabel("Density (every Nth cell):"))
+        self._uv_stride_spin = QSpinBox()
+        self._uv_stride_spin.setRange(1, 32)
+        self._uv_stride_spin.setValue(4)
+        self._uv_stride_spin.setEnabled(False)
+        self._uv_stride_spin.valueChanged.connect(self.vector_stride_changed)
+        row.addWidget(self._uv_stride_spin)
+        row.addStretch(1)
+        layout.addLayout(row)
+
+        # Wire enable/disable of the stride spin to the checkbox.
+        self._uv_check.toggled.connect(self._uv_stride_spin.setEnabled)
+
+        # Mesh wireframe overlay (separate row, shares the same group box
+        # since both are "extra layers" of the map).
+        self._mesh_check = QCheckBox("Show mesh wireframe")
+        self._mesh_check.setChecked(False)
+        self._mesh_check.setEnabled(False)
+        self._mesh_check.toggled.connect(self.mesh_overlay_toggled)
+        layout.addWidget(self._mesh_check)
+        return box
+
     def _build_range_box(self) -> QFrame:
         box = QFrame()
         box.setFrameShape(QFrame.Shape.StyledPanel)
@@ -256,6 +300,37 @@ class ResultControls(QWidget):
         if self._variable_combo.count() > 0:
             self._variable_combo.setCurrentIndex(0)
         self._play_btn.setEnabled(dataset.n_time > 1)
+
+    def set_vector_overlay_available(self, available: bool) -> None:
+        """Enable / disable the U/V overlay row.
+
+        Disables the checkbox itself when no U/V variables exist in the
+        current dataset; the user then sees the row but can't toggle it on.
+        """
+        self._uv_check.setEnabled(available)
+        if not available:
+            # Force-off so we don't render against a stale UV field after
+            # switching to a result file that doesn't contain velocities.
+            self._uv_check.setChecked(False)
+        self._uv_stride_spin.setEnabled(available and self._uv_check.isChecked())
+
+    def vector_overlay_enabled(self) -> bool:
+        """Whether the vector overlay checkbox is currently checked."""
+        return bool(self._uv_check.isChecked())
+
+    def vector_overlay_stride(self) -> int:
+        """Current stride value for U/V down-sampling."""
+        return int(self._uv_stride_spin.value())
+
+    def set_mesh_overlay_available(self, available: bool) -> None:
+        """Enable / disable the mesh-wireframe checkbox."""
+        self._mesh_check.setEnabled(available)
+        if not available:
+            self._mesh_check.setChecked(False)
+
+    def mesh_overlay_enabled(self) -> bool:
+        """Whether the mesh wireframe checkbox is currently checked."""
+        return bool(self._mesh_check.isChecked())
 
     def set_value_extents(self, vmin: float, vmax: float) -> None:
         """Pre-fill the manual min/max with the autoscale values."""

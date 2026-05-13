@@ -20,6 +20,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from deltasuite.core.dfm_tools_adapter import (
+    extract_uv_field,
+    find_uv_variables,
+)
+from deltasuite.core.mesh_adapter import MeshGeometry, load_mesh_from_dataset
 from deltasuite.core.results import ResultDataset
 from deltasuite.views.map_viewer import MapViewerWidget
 from deltasuite.widgets.result_controls import ResultControls
@@ -37,6 +42,7 @@ class ResultPanel(QWidget):
         self._controls = ResultControls()
         self._dataset: ResultDataset | None = None
         self._files: list[Path] = []
+        self._cached_mesh: MeshGeometry | None = None
 
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
         self._splitter.setChildrenCollapsible(False)
@@ -55,6 +61,9 @@ class ResultPanel(QWidget):
         self._controls.time_changed.connect(self._on_time_changed)
         self._controls.colormap_changed.connect(self._viewer.set_colormap)
         self._controls.range_changed.connect(self._viewer.set_value_range)
+        self._controls.vector_overlay_toggled.connect(self._on_vector_toggled)
+        self._controls.vector_stride_changed.connect(self._on_vector_stride_changed)
+        self._controls.mesh_overlay_toggled.connect(self._on_mesh_toggled)
 
     # ------------------------------------------------------------------
     # Public API
@@ -108,6 +117,15 @@ class ResultPanel(QWidget):
             return
         self._dataset = ds
         self._controls.set_dataset(ds)
+        # Inform the controls panel whether U/V components exist in this
+        # dataset so it can enable/disable the vector overlay row.
+        u_name, v_name = find_uv_variables(ds.raw)
+        self._controls.set_vector_overlay_available(u_name is not None and v_name is not None)
+        # Same idea for the mesh wireframe overlay: only enable it when the
+        # dataset actually contains a mesh we can render.
+        mesh_result = load_mesh_from_dataset(ds.raw)
+        self._controls.set_mesh_overlay_available(mesh_result.ok)
+        self._cached_mesh = mesh_result.mesh
         self._refresh_field()
 
     def _on_variable_changed(self, _name: str) -> None:
@@ -115,6 +133,22 @@ class ResultPanel(QWidget):
 
     def _on_time_changed(self, _index: int) -> None:
         self._refresh_field()
+
+    def _on_vector_toggled(self, enabled: bool) -> None:
+        if not enabled:
+            self._viewer.set_vector_overlay(None)
+            return
+        self._refresh_uv_overlay()
+
+    def _on_vector_stride_changed(self, _stride: int) -> None:
+        if self._controls.vector_overlay_enabled():
+            self._refresh_uv_overlay()
+
+    def _on_mesh_toggled(self, enabled: bool) -> None:
+        if enabled and self._cached_mesh is not None:
+            self._viewer.set_mesh_overlay(self._cached_mesh)
+        else:
+            self._viewer.set_mesh_overlay(None)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -132,6 +166,23 @@ class ResultPanel(QWidget):
             logger.warning("read_field({}, t={}) failed: {}", var, time_index, exc)
             return
         self._viewer.set_field(field)
+        # Re-draw the vector overlay if the user has it enabled, so it
+        # stays synchronised with the current time step.
+        if self._controls.vector_overlay_enabled():
+            self._refresh_uv_overlay()
+
+    def _refresh_uv_overlay(self) -> None:
+        """Re-extract U/V and feed it to the map viewer for the current time."""
+        if self._dataset is None:
+            return
+        time_index = self._controls.current_time_index()
+        stride = self._controls.vector_overlay_stride()
+        try:
+            uv = extract_uv_field(self._dataset.raw, time_index=time_index, stride=stride)
+        except Exception as exc:
+            logger.warning("extract_uv_field failed: {}", exc)
+            uv = None
+        self._viewer.set_vector_overlay(uv)
 
     def _close_dataset(self) -> None:
         if self._dataset is not None:

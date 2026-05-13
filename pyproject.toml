@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "deltasuite"
-version = "0.1.0a1"
+version = "0.1.0a2"
 description = "Open source desktop suite for pre-processing, running and post-processing Delft3D models"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -81,10 +81,16 @@ science = [
   "pandas>=2.1",
 ]
 delft3d = [
-  "hydrolib-core>=0.7",
-  "dfm-tools>=0.27",
-  "meshkernel>=4.0",
-  "xugrid>=0.10",
+  # Official Deltares stack. ``hydrolib-core`` provides the canonical
+  # parsers/serialisers for D-Flow FM (.mdu, structures, boundary conditions);
+  # ``dfm-tools`` adds high-level post-processing (vector overlays,
+  # cross-sections, partitioned datasets); ``meshkernel`` is the C++ mesh
+  # engine that powers grid generation and editing; ``xugrid`` is the
+  # xarray extension we use for UGRID-aware I/O.
+  "hydrolib-core>=1.0",
+  "dfm-tools>=0.45",
+  "meshkernel>=8.2",
+  "xugrid>=0.11",
 ]
 dev = [
   "pytest>=8.0",
@@ -174,8 +180,12 @@ ignore = [
   "N803",    # argument name should be lowercase (Qt uses camelCase)
   "N806",    # variable in function should be lowercase (Qt uses camelCase)
   "PLC0415", # import-outside-top-level (we use lazy imports for Qt and to keep CLI snappy)
-  "TCH001",  # typing-only-first-party-import (we like having imports near usage)
-  "TCH003",  # typing-only-standard-library-import (extra noise for stdlib types)
+  # NOTE: TCH001/TCH003 are the names used by the ruff version pinned in
+  # pre-commit (0.5). Newer ruff (>=0.6) emits a deprecation warning and
+  # remaps to TC001/TC003 automatically, but rejects TC001/TC003 in 0.5,
+  # so we keep the old names here for compatibility with both.
+  "TCH001",
+  "TCH003",
   "SIM112",  # uncapitalized environment variables (Windows uses 'ProgramFiles')
 ]
 
@@ -206,12 +216,26 @@ strict = true
 warn_unused_ignores = false
 warn_return_any = true
 ignore_missing_imports = true
+# Disable mypy from following imports into third-party packages that ship
+# Python 3.12+ syntax (``zarr``, ``dask``, etc.) - we already have
+# ``ignore_missing_imports = true`` for stub-less packages, but mypy will
+# try to actually parse them when they are available; ``follow_imports =
+# silent`` keeps mypy from descending into their source files.
+follow_imports = "silent"
 plugins = ["pydantic.mypy"]
 exclude = ["build", "dist", "docs/_build"]
 
 [[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_defs = false
+
+# Third-party packages whose source uses Python 3.12+ syntax (PEP 695 type
+# parameter lists, etc.) which our ``python_version = "3.11"`` mypy refuses
+# to parse. We do not call into these directly with explicit type
+# annotations, so silencing their analysis is harmless.
+[[tool.mypy.overrides]]
+module = ["zarr.*", "numcodecs.*", "donfig.*"]
+follow_imports = "skip"
 
 # ----------------------------------------------------------------------
 # Pytest
