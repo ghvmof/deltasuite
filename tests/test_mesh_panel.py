@@ -209,3 +209,153 @@ def test_mesh3d_panel_uses_depth_provider_for_node_values(qtbot) -> None:  # typ
     assert panel3d.viewer.current_mesh() is mesh
     assert panel3d.viewer._node_values is not None
     np.testing.assert_allclose(panel3d.viewer._node_values, depth.node_values)
+
+
+# ---------------------------------------------------------------------------
+# Triangulation + refine-by-samples slots
+# ---------------------------------------------------------------------------
+
+
+def test_mesh_panel_triangulate_from_bbox(qtbot) -> None:  # type: ignore[no-untyped-def]
+    """Triangulating from the current bbox must replace the structured mesh
+    with a Delaunay triangulation that covers the same extent."""
+    pytest.importorskip("meshkernel")
+    from deltasuite.mesh import make_rectangular_mesh
+
+    panel = MeshPanel()
+    qtbot.addWidget(panel)
+    gen = make_rectangular_mesh(origin_x=0.0, origin_y=0.0, n_columns=4, n_rows=3, cell_size=10.0)
+    assert gen.ok
+    panel._set_mesh(gen.mesh)
+    assert panel.current_mesh() is not None
+    assert panel.current_mesh().is_structured
+
+    panel._on_triangulate_from_bbox()
+    new_mesh = panel.current_mesh()
+    assert new_mesh is not None
+    assert new_mesh.n_nodes >= 4  # at least the bbox corners
+    # After triangulation the mesh is no longer structured.
+    assert not new_mesh.is_structured
+
+
+def test_mesh_panel_triangulate_from_file_via_pol(qtbot, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    pytest.importorskip("meshkernel")
+    from deltasuite.mesh import load_polygon_file
+
+    pol = tmp_path / "triangle.pol"
+    pol.write_text(
+        "domain\n3 2\n0.0 0.0\n10.0 0.0\n5.0 8.0\n",
+        encoding="utf-8",
+    )
+    loaded = load_polygon_file(pol)
+    assert loaded.ok
+    assert loaded.largest().n_vertices == 3
+
+    panel = MeshPanel()
+    qtbot.addWidget(panel)
+    largest = loaded.largest()
+    panel._triangulate(largest.x, largest.y, source=pol.name)
+    mesh = panel.current_mesh()
+    assert mesh is not None
+    assert mesh.n_nodes >= 3
+
+
+def test_mesh_panel_refine_by_depth_requires_depth(qtbot) -> None:  # type: ignore[no-untyped-def]
+    """No-op when depth is missing -- must not crash, must not change mesh."""
+    pytest.importorskip("meshkernel")
+    from deltasuite.mesh import make_rectangular_mesh
+
+    panel = MeshPanel()
+    qtbot.addWidget(panel)
+    gen = make_rectangular_mesh(origin_x=0.0, origin_y=0.0, n_columns=3, n_rows=3, cell_size=10.0)
+    assert gen.ok
+    panel._set_mesh(gen.mesh)
+    n_nodes_before = panel.current_mesh().n_nodes
+    panel._on_refine_by_depth(0.0, 2)  # no depth attached -> early return
+    assert panel.current_mesh().n_nodes == n_nodes_before
+
+
+def test_mesh_panel_refine_by_depth_rejects_zero_min_edge(qtbot, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """``min_edge_size <= 0`` with node-aligned samples can drive
+    meshkernel into a runaway refinement loop. The slot must refuse it
+    early instead of forwarding to the backend."""
+    pytest.importorskip("meshkernel")
+    from PySide6.QtWidgets import QMessageBox
+
+    from deltasuite.mesh import make_rectangular_mesh
+    from deltasuite.mesh.io_dep import DepthField as Field
+
+    # The slot opens a modal QMessageBox on rejection; intercept it so
+    # the test thread doesn't block waiting for user input.
+    monkeypatch.setattr(QMessageBox, "warning", lambda *a, **k: None)
+
+    panel = MeshPanel()
+    qtbot.addWidget(panel)
+    gen = make_rectangular_mesh(origin_x=0.0, origin_y=0.0, n_columns=3, n_rows=3, cell_size=10.0)
+    assert gen.ok
+    mesh = gen.mesh
+    panel._set_mesh(mesh)
+    panel._set_depth(
+        Field(
+            node_values=mesh.node_x.astype(float).copy(),
+            missing_value=-999.0,
+            layout="nodes",
+        ),
+        source="synthetic",
+    )
+    n_nodes_before = panel.current_mesh().n_nodes
+    panel._on_refine_by_depth(0.0, 2)  # zero -> rejected
+    assert panel.current_mesh().n_nodes == n_nodes_before
+
+
+def test_mesh_panel_refine_by_depth_with_positive_min_edge(qtbot) -> None:  # type: ignore[no-untyped-def]
+    """With ``min_edge_size`` set to a sane fraction of the cell size,
+    the refinement must run to completion and not shrink the mesh."""
+    pytest.importorskip("meshkernel")
+    from deltasuite.mesh import make_rectangular_mesh
+    from deltasuite.mesh.io_dep import DepthField as Field
+
+    panel = MeshPanel()
+    qtbot.addWidget(panel)
+    cell = 100.0
+    gen = make_rectangular_mesh(origin_x=0.0, origin_y=0.0, n_columns=4, n_rows=4, cell_size=cell)
+    assert gen.ok
+    mesh = gen.mesh
+    panel._set_mesh(mesh)
+    panel._set_depth(
+        Field(
+            node_values=mesh.node_x.astype(float).copy(),
+            missing_value=-999.0,
+            layout="nodes",
+        ),
+        source="synthetic",
+    )
+    n_nodes_before = panel.current_mesh().n_nodes
+    panel._on_refine_by_depth(cell / 2.0, 2)
+    n_nodes_after = panel.current_mesh().n_nodes
+    # Refinement is deterministic but the "did it actually densify"
+    # decision sits inside meshkernel; we only insist that the operation
+    # completed and that the mesh count didn't shrink.
+    assert n_nodes_after >= n_nodes_before
+
+
+def test_mesh_controls_refine_by_depth_button_disabled_without_depth(qtbot) -> None:  # type: ignore[no-untyped-def]
+    controls = MeshControls()
+    qtbot.addWidget(controls)
+    controls.set_mesh_loaded(True)
+    assert not controls._refine_by_depth_btn.isEnabled()
+    controls.set_depth_loaded(loaded=True, summary="x")
+    assert controls._refine_by_depth_btn.isEnabled()
+    controls.set_depth_loaded(loaded=False)
+    assert not controls._refine_by_depth_btn.isEnabled()
+
+
+def test_mesh_controls_triangulate_bbox_button_requires_mesh(qtbot) -> None:  # type: ignore[no-untyped-def]
+    controls = MeshControls()
+    qtbot.addWidget(controls)
+    controls.set_mesh_loaded(False)
+    assert not controls._triangulate_bbox_btn.isEnabled()
+    # The "from file" button is always enabled (it doesn't need a mesh).
+    assert controls._triangulate_file_btn.isEnabled()
+    controls.set_mesh_loaded(True)
+    assert controls._triangulate_bbox_btn.isEnabled()

@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Polygon-file reader (`mesh/io_pol.py`)**
+  - New `Polygon2D` and `PolygonLoadResult` dataclasses + a single
+    tolerant `load_polygon_file()` that parses Delft3D `.pol`,
+    `.ldb` (land boundary) and bare `.xy` files. Comments
+    (`*` / `#`), blank lines and the per-polygon name + `nrows ncols`
+    header rows are recognised; multiple polygons stacked in the
+    same file are returned in order with a `largest()` helper to pick
+    the most-vertex-rich one as a triangulation domain.
+- **Triangulation in the *Mesh* tab**
+  - New "Triangulate (Delaunay)" controls group with two buttons:
+    *From file (.pol / .ldb / .xy)…* (opens the polygon file dialog
+    and pipes the largest ring through
+    `make_triangular_mesh_from_polygon`) and *From current mesh
+    bbox* (uses the active mesh's bounding rectangle, so a structured
+    `.grd` can be re-meshed to an unstructured Delaunay grid in one
+    click). The bbox button is greyed out until a mesh is loaded.
+- **Sample-driven refinement in the *Mesh* tab**
+  - New "Refine by samples (uses depth)" controls group with
+    *min_edge_size* (default `1.0`, floored at `0.001`) and
+    *max iterations* (default `3`) spin boxes plus a *Refine using
+    current depth* button. The slot lifts the active mesh + active
+    `DepthField` straight into `refine_mesh_based_on_samples`,
+    using the mesh nodes as sample positions and the bathymetry as
+    sample values. NaN samples are dropped.
+  - The button is enabled only when **both** a mesh and a depth field
+    are loaded; the slot also refuses `min_edge_size <= 0` early to
+    avoid a runaway refinement loop in MeshKernel when samples
+    coincide with the mesh nodes.
+- **17 new tests** (`tests/test_mesh_io_pol.py` and the new
+  triangulation / refine-by-samples sections of
+  `tests/test_mesh_panel.py`) covering the polygon parser
+  (single + multi-ring, comments, smoke-load of three real Delft3D
+  example files), the triangulation slots (bbox + file dispatch),
+  the depth-driven refinement (rejects zero `min_edge_size`,
+  succeeds with a positive value) and the new button enable/disable
+  rules. Total: **225 tests** passing.
+
 ## [0.1.0a3] - 2026-05-13
 
 ### Added

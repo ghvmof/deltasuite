@@ -48,6 +48,11 @@ from deltasuite.mesh.io_grd import (
     load_grd_mesh,
     save_grd_mesh,
 )
+from deltasuite.mesh.io_pol import (
+    Polygon2D,
+    PolygonLoadResult,
+    load_polygon_file,
+)
 from deltasuite.mesh.refine import (
     refine_mesh_based_on_samples,
     refine_mesh_inside_polygon,
@@ -63,11 +68,14 @@ __all__ = [
     "Enclosure",
     "EnclosureLoadResult",
     "MeshOpResult",
+    "Polygon2D",
+    "PolygonLoadResult",
     "delete_node",
     "hanging_edges",
     "load_dep_samples",
     "load_enc",
     "load_grd_mesh",
+    "load_polygon_file",
     "make_rectangular_mesh",
     "make_triangular_mesh_from_polygon",
     "merge_nearby_nodes",

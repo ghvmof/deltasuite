@@ -10,6 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import numpy as np
 from loguru import logger
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -25,8 +26,11 @@ from deltasuite.core.mesh_adapter import load_mesh_from_path
 from deltasuite.mesh import (
     load_dep_samples,
     load_grd_mesh,
+    load_polygon_file,
     make_rectangular_mesh,
+    make_triangular_mesh_from_polygon,
     orthogonalize_mesh,
+    refine_mesh_based_on_samples,
     refine_mesh_inside_polygon,
     save_grd_mesh,
     save_mesh_to_ugrid_netcdf,
@@ -69,6 +73,9 @@ class MeshPanel(QWidget):
         self._controls.clear_mesh_requested.connect(self._on_clear)
         self._controls.open_depth_requested.connect(self._on_open_depth)
         self._controls.clear_depth_requested.connect(self._on_clear_depth)
+        self._controls.triangulate_from_file_requested.connect(self._on_triangulate_from_file)
+        self._controls.triangulate_from_bbox_requested.connect(self._on_triangulate_from_bbox)
+        self._controls.refine_by_depth_requested.connect(self._on_refine_by_depth)
 
     # ------------------------------------------------------------------
     # Public API
@@ -211,6 +218,93 @@ class MeshPanel(QWidget):
     def _on_clear_depth(self) -> None:
         self._set_depth(None)
         self._controls.set_status("Depth cleared.")
+
+    def _on_triangulate_from_file(self) -> None:
+        path_str, _ = QFileDialog.getOpenFileName(
+            self,
+            "Triangulate from polygon file",
+            "",
+            (
+                "Delft3D polygon (*.pol *.ldb *.xy);;"
+                "Polygon (*.pol);;"
+                "Land boundary (*.ldb);;"
+                "XY pairs (*.xy);;"
+                "All files (*)"
+            ),
+        )
+        if not path_str:
+            return
+        path = Path(path_str)
+        loaded = load_polygon_file(path)
+        if not loaded.ok:
+            self._error("Triangulate", loaded.error or "no polygon found")
+            return
+        polygon = loaded.largest()
+        if polygon is None or polygon.n_vertices < 3:
+            self._error(
+                "Triangulate",
+                f"polygon needs >= 3 vertices to triangulate (got {polygon.n_vertices if polygon else 0})",
+            )
+            return
+        self._triangulate(polygon.x, polygon.y, source=f"{path.name} ({polygon.name})")
+
+    def _on_triangulate_from_bbox(self) -> None:
+        if self._mesh is None:
+            return
+        px, py = self._mesh_bbox_polygon()
+        self._triangulate(
+            np.asarray(px, dtype=float), np.asarray(py, dtype=float), source="current mesh bbox"
+        )
+
+    def _on_refine_by_depth(self, min_edge_size: float, max_iterations: int) -> None:
+        if self._mesh is None or self._depth is None:
+            return
+        # Sample coordinates = mesh node positions; sample values = depth.
+        # NaN samples are dropped so meshkernel only sees finite numbers.
+        nx = self._mesh.node_x
+        ny = self._mesh.node_y
+        values = self._depth.node_values
+        valid_mask = ~np.isnan(values)
+        if not valid_mask.any():
+            self._error("Refine by samples", "depth field has no valid samples")
+            return
+        # Defensive floor on min_edge_size: with samples placed at the
+        # mesh nodes themselves and min_edge_size <= 0, meshkernel can
+        # spiral into runaway refinement. Refuse early in that case.
+        if min_edge_size <= 0.0:
+            self._error(
+                "Refine by samples",
+                "min_edge_size must be > 0 when samples coincide with mesh nodes",
+            )
+            return
+        result = refine_mesh_based_on_samples(
+            self._mesh,
+            sample_x=nx[valid_mask],
+            sample_y=ny[valid_mask],
+            sample_values=values[valid_mask],
+            min_edge_size=min_edge_size,
+            max_refinement_iterations=max_iterations,
+        )
+        if not result.ok or result.mesh is None:
+            self._error("Refine by samples", result.error or "unknown error")
+            return
+        new_mesh = result.mesh
+        self._set_mesh(new_mesh)
+        self._controls.set_status(
+            f"Refined by samples: {new_mesh.n_nodes} nodes "
+            f"(max_iter={max_iterations}, min_edge={min_edge_size})."
+        )
+
+    def _triangulate(self, polygon_x: np.ndarray, polygon_y: np.ndarray, *, source: str) -> None:
+        result = make_triangular_mesh_from_polygon(polygon_x, polygon_y)
+        if not result.ok or result.mesh is None:
+            self._error("Triangulate", result.error or "unknown error")
+            return
+        new_mesh = result.mesh
+        self._set_mesh(new_mesh)
+        self._controls.set_status(
+            f"Triangulated from {source}: {new_mesh.n_nodes} nodes / {new_mesh.n_faces} faces."
+        )
 
     # ------------------------------------------------------------------
     # Helpers
