@@ -121,7 +121,10 @@ class MainWindow(QMainWindow):
         self._mesh_panel = MeshPanel()
         self._workspace_tabs.addTab(self._mesh_panel, "Mesh")
 
-        self._mesh3d_panel = Mesh3DPanel(mesh_provider=self._mesh_panel.current_mesh)
+        self._mesh3d_panel = Mesh3DPanel(
+            mesh_provider=self._mesh_panel.current_mesh,
+            depth_provider=self._mesh_panel.current_depth,
+        )
         self._workspace_tabs.addTab(self._mesh3d_panel, "3D")
         self._workspace_tabs.currentChanged.connect(self._on_workspace_tab_changed)
 

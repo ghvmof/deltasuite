@@ -25,9 +25,11 @@ from deltasuite.widgets.mesh3d_controls import Mesh3DControls
 
 if TYPE_CHECKING:
     from deltasuite.core.mesh_adapter import MeshGeometry
+    from deltasuite.mesh.io_dep import DepthField
 
 
 MeshProvider = Callable[[], "MeshGeometry | None"]
+DepthProvider = Callable[[], "DepthField | None"]
 
 
 class Mesh3DPanel(QWidget):
@@ -37,11 +39,14 @@ class Mesh3DPanel(QWidget):
         self,
         mesh_provider: MeshProvider | None = None,
         parent: QWidget | None = None,
+        *,
+        depth_provider: DepthProvider | None = None,
     ) -> None:
         super().__init__(parent)
         self._viewer = Mesh3DViewerWidget()
         self._controls = Mesh3DControls()
         self._mesh_provider: MeshProvider | None = mesh_provider
+        self._depth_provider: DepthProvider | None = depth_provider
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setChildrenCollapsible(False)
@@ -79,18 +84,33 @@ class Mesh3DPanel(QWidget):
         """Wire / re-wire the callable that supplies the active mesh."""
         self._mesh_provider = provider
 
+    def set_depth_provider(self, provider: DepthProvider | None) -> None:
+        """Wire / re-wire the callable that supplies a per-node depth."""
+        self._depth_provider = provider
+
     def refresh_from_provider(self) -> None:
-        """Pull the current mesh from the provider and redraw."""
+        """Pull the current mesh (and depth) from the providers and redraw."""
         if self._mesh_provider is None:
             self._controls.set_status("No mesh source connected.")
             return
         mesh = self._mesh_provider()
         self._viewer.set_mesh(mesh)
+        depth_status = ""
+        if self._depth_provider is not None and mesh is not None:
+            depth = self._depth_provider()
+            if depth is not None and depth.n_nodes == mesh.n_nodes:
+                self._viewer.set_node_values(depth.node_values)
+                depth_status = f" / depth {depth.n_valid}/{depth.n_nodes} valid"
+            else:
+                self._viewer.set_node_values(None)
+        else:
+            self._viewer.set_node_values(None)
         if mesh is None:
             self._controls.set_status("No mesh loaded.")
         else:
             self._controls.set_status(
-                f"Synced: {mesh.n_nodes} nodes, {mesh.n_edges} edges, {mesh.n_faces} faces."
+                f"Synced: {mesh.n_nodes} nodes, {mesh.n_edges} edges, "
+                f"{mesh.n_faces} faces{depth_status}."
             )
 
     def set_mesh(self, mesh: MeshGeometry | None) -> None:
@@ -105,3 +125,4 @@ class Mesh3DPanel(QWidget):
 
     def shutdown(self) -> None:
         self._mesh_provider = None
+        self._depth_provider = None

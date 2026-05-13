@@ -42,6 +42,10 @@ class MeshControls(QWidget):
     """User clicked *Save mesh as…*."""
     clear_mesh_requested = Signal()
     """User clicked *Clear*."""
+    open_depth_requested = Signal()
+    """User clicked *Open depth (.dep)…*."""
+    clear_depth_requested = Signal()
+    """User clicked *Clear depth*."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -55,6 +59,7 @@ class MeshControls(QWidget):
         outer.setSpacing(10)
 
         outer.addWidget(self._build_io_box())
+        outer.addWidget(self._build_depth_box())
         outer.addWidget(self._build_generate_box())
         outer.addWidget(self._build_refine_box())
         outer.addWidget(self._build_ortho_box())
@@ -90,6 +95,23 @@ class MeshControls(QWidget):
         self._open_btn.clicked.connect(self.open_mesh_requested)
         self._save_btn.clicked.connect(self.save_mesh_requested)
         self._clear_btn.clicked.connect(self.clear_mesh_requested)
+        return box
+
+    def _build_depth_box(self) -> QFrame:
+        box, layout = self._box("Bathymetry (.dep)")
+        self._open_depth_btn = QPushButton("Open depth (.dep)…")
+        self._clear_depth_btn = QPushButton("Clear depth")
+        self._open_depth_btn.setEnabled(False)
+        self._clear_depth_btn.setEnabled(False)
+        self._depth_label = QLabel("No depth loaded.")
+        self._depth_label.setStyleSheet("color: #94a3b8;")
+        self._depth_label.setWordWrap(True)
+        layout.addRow(self._open_depth_btn)
+        layout.addRow(self._clear_depth_btn)
+        layout.addRow(self._depth_label)
+
+        self._open_depth_btn.clicked.connect(self.open_depth_requested)
+        self._clear_depth_btn.clicked.connect(self.clear_depth_requested)
         return box
 
     def _build_generate_box(self) -> QFrame:
@@ -158,8 +180,26 @@ class MeshControls(QWidget):
     # ------------------------------------------------------------------
     def set_mesh_loaded(self, loaded: bool) -> None:
         """Toggle the buttons that only make sense once a mesh exists."""
-        for btn in (self._save_btn, self._clear_btn, self._refine_btn, self._ortho_btn):
+        for btn in (
+            self._save_btn,
+            self._clear_btn,
+            self._refine_btn,
+            self._ortho_btn,
+            self._open_depth_btn,
+        ):
             btn.setEnabled(loaded)
+        if not loaded:
+            self.set_depth_loaded(loaded=False)
+
+    def set_depth_loaded(self, loaded: bool, summary: str | None = None) -> None:
+        """Toggle the depth-related buttons and update the status label."""
+        self._clear_depth_btn.setEnabled(loaded)
+        if loaded and summary:
+            self._depth_label.setText(summary)
+            self._depth_label.setStyleSheet("color: #f1f5f9;")
+        else:
+            self._depth_label.setText("No depth loaded.")
+            self._depth_label.setStyleSheet("color: #94a3b8;")
 
     def set_status(self, text: str) -> None:
         self._status.setText(text)

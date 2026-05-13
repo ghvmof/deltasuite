@@ -27,6 +27,16 @@ from deltasuite.mesh.io import (
     round_trip_mesh,
     save_mesh_to_ugrid_netcdf,
 )
+from deltasuite.mesh.io_dep import (
+    DEFAULT_MISSING_VALUE as DEPTH_DEFAULT_MISSING_VALUE,
+)
+from deltasuite.mesh.io_dep import (
+    DepthField,
+    DepthLayout,
+    DepthLoadResult,
+    load_dep_samples,
+    save_dep_samples,
+)
 from deltasuite.mesh.io_enc import (
     Enclosure,
     EnclosureLoadResult,
@@ -45,12 +55,17 @@ from deltasuite.mesh.refine import (
 
 __all__ = [
     "DEFAULT_MISSING_VALUE",
+    "DEPTH_DEFAULT_MISSING_VALUE",
     "UGRID_CONVENTIONS",
+    "DepthField",
+    "DepthLayout",
+    "DepthLoadResult",
     "Enclosure",
     "EnclosureLoadResult",
     "MeshOpResult",
     "delete_node",
     "hanging_edges",
+    "load_dep_samples",
     "load_enc",
     "load_grd_mesh",
     "make_rectangular_mesh",
@@ -61,6 +76,7 @@ __all__ = [
     "refine_mesh_based_on_samples",
     "refine_mesh_inside_polygon",
     "round_trip_mesh",
+    "save_dep_samples",
     "save_enc",
     "save_grd_mesh",
     "save_mesh_to_ugrid_netcdf",

@@ -9,6 +9,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Delft3D `.dep` bathymetry reader / writer (`mesh/io_dep.py`)**
+  - `DepthField` dataclass: per-node `node_values` array (length
+    `mesh.n_nodes`, NaN for missing samples) plus the original
+    `missing_value` and the auto-detected `layout` tag for diagnostics.
+  - `load_dep_samples(path, mesh)` parses the legacy ASCII format used
+    by every Delft3D 4 / SWAN project. Auto-detects the layout from
+    the file size and the mesh's `structured_shape`:
+    - `corners_extra` (DPV, `(N+1) x (M+1)` values, the most common)
+      -- the trailing sentinel row / column is dropped on load;
+    - `nodes` (`M x N`, aligned one-to-one with the grid nodes);
+    - `centers` (`(M-1) x (N-1)`) is detected and rejected with a
+      clear error -- there is no lossless mapping to per-node
+      values without interpolation.
+  - Recognises both the decimal (`-999.000`) and the scientific
+    (`-9.99E+02`) missing-value flavours used in the wild, with a
+    configurable tolerance.
+  - `save_dep_samples(field, path, mesh)` always writes the canonical
+    `corners_extra` layout (twelve scientific-notation values per line),
+    serialising NaN samples back to `missing_value` and appending the
+    sentinel row / column automatically. Round-trips bit-for-bit
+    through `load_dep_samples`.
+- **Bathymetry in the *Mesh* tab**
+  - New "Bathymetry (.dep)" group in `MeshControls` with an
+    *Open depth (.dep)…* button and a *Clear depth* button, plus a
+    status label that shows the source file, the `valid / total`
+    sample count and the value range once a field is loaded.
+  - `MeshViewerWidget` learnt `set_depth(field)`: when a depth field
+    is attached, faces are coloured by mean nodal depth via a
+    `PolyCollection` and a colourbar is overlaid; the wireframe is
+    still drawn on top so the topology stays legible.
+  - Loading or clearing a mesh automatically drops the depth field
+    (it is keyed by node count, so it cannot survive topology changes).
+- **Bathymetry in the *3D* tab**
+  - `Mesh3DPanel` now accepts an optional `depth_provider` callable;
+    on every `refresh_from_provider()` it pulls the active depth from
+    the *Mesh* tab and feeds the values into the existing
+    `Mesh3DViewerWidget.set_node_values()` slot. The demo radial
+    extrusion is replaced by the real bathymetry as soon as a `.dep`
+    is loaded; clearing the depth or the mesh restores it.
+  - `MainWindow` wires `MeshPanel.current_depth` as the
+    `depth_provider`, so the user only has to load the file once and
+    the *3D* tab picks it up automatically when it becomes visible.
+- **19 new tests** covering the reader, the writer, NaN round-trips,
+  the layout auto-detector (and centres rejection), error paths, plus
+  three real-file smoke tests against `f34.dep`, `weir.dep` and
+  `coastw20.dep` shipped with the workspace examples (skipped when
+  the workspace is not present). Total: **208 tests** passing.
+
+### Changed
+
+- `tests/conftest.py`, `tests/test_hydrolib_adapter.py`,
+  `tests/test_recent.py`: ruff `PT001` auto-fix changed
+  `@pytest.fixture()` to `@pytest.fixture` -- pure stylistic, no
+  behavioural change.
+
 - **Delft3D RGFGRID `.grd` reader / writer (`mesh/io_grd.py`)**
   - `load_grd_mesh()` parses the legacy ASCII format used by every
     `examples/delft3d4/*` project (and by the SWAN sub-models of
