@@ -9,6 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **3-D mesh viewer (`views/mesh3d_viewer.py`)**
+  - `Mesh3DViewerWidget` -- matplotlib `Axes3D` canvas with the
+    standard navigation toolbar; renders the active mesh as a
+    `Poly3DCollection` (faces, colour-mapped by mean Z) plus a
+    `Line3DCollection` (edges). Two display modes: *flat* (z=0,
+    handy as a sanity preview) and *demo extruded* (smooth radial
+    sinusoid scaled to ~10 % of the mesh extent).
+  - Per-node Z values can be supplied via `set_node_values()` so
+    bathymetry / water-level fields can drive the extrusion later
+    without changing the API.
+- **3-D side controls (`widgets/mesh3d_controls.py`)**
+  - `Mesh3DControls` -- mode selector, Z-scale spin box, faces /
+    edges toggles, colormap picker (viridis / plasma / magma /
+    cividis / turbo / terrain / RdBu_r) and elevation / azimuth
+    sliders. Emits one typed Qt signal per control.
+- **3-D coordinator (`views/mesh3d_panel.py`)**
+  - `Mesh3DPanel` -- splitter that pairs the viewer with its
+    controls and pulls the geometry from the *Mesh* tab via a
+    `mesh_provider` callable, so the source of truth stays in the
+    editor.
+- **New 3D tab in `MainWindow`**
+  - Wired as the sixth workspace tab (after *Mesh*) and auto-syncs
+    with the *Mesh* tab whenever the user switches to it.
+  - Graceful `shutdown()` hook.
+- **6 new GUI smoke tests** (`tests/test_mesh3d_panel.py`) covering
+  the viewer (flat + extruded modes, all setters), the controls
+  (default colormaps, mode selection) and the panel (provider sync,
+  direct `set_mesh`, signal-driven viewer updates).
+  Total: **165 tests** passing.
+
 - **Mesh editing back end (`deltasuite.mesh`)**
   - `mesh/generate.py`: `make_rectangular_mesh()` (uniform M×N grid
     with optional rotation) and `make_triangular_mesh_from_polygon()`

@@ -58,7 +58,7 @@ from deltasuite.core.samples import open_bundled_sample
 from deltasuite.core.settings import Settings
 from deltasuite.core.timeseries import find_history_files
 from deltasuite.editors import KeyValueEditor
-from deltasuite.views import MeshPanel, ResultPanel, TimeSeriesPanel
+from deltasuite.views import Mesh3DPanel, MeshPanel, ResultPanel, TimeSeriesPanel
 
 
 class MainWindow(QMainWindow):
@@ -120,6 +120,10 @@ class MainWindow(QMainWindow):
 
         self._mesh_panel = MeshPanel()
         self._workspace_tabs.addTab(self._mesh_panel, "Mesh")
+
+        self._mesh3d_panel = Mesh3DPanel(mesh_provider=self._mesh_panel.current_mesh)
+        self._workspace_tabs.addTab(self._mesh3d_panel, "3D")
+        self._workspace_tabs.currentChanged.connect(self._on_workspace_tab_changed)
 
         self._central_stack.addWidget(self._workspace_tabs)
         self._central_stack.setCurrentIndex(0)
@@ -928,6 +932,7 @@ class MainWindow(QMainWindow):
         self._result_panel.shutdown()
         self._series_panel.shutdown()
         self._mesh_panel.shutdown()
+        self._mesh3d_panel.shutdown()
         logger.info("Closing {}", APP_NAME)
         super().closeEvent(event)
 
@@ -935,3 +940,8 @@ class MainWindow(QMainWindow):
         if event.matches(QKeySequence.StandardKey.Cancel):
             self.statusBar().clearMessage()
         super().keyPressEvent(event)
+
+    def _on_workspace_tab_changed(self, _index: int) -> None:
+        """Auto-sync the 3-D viewer whenever the user switches to its tab."""
+        if self._workspace_tabs.currentWidget() is self._mesh3d_panel:
+            self._mesh3d_panel.refresh_from_provider()
